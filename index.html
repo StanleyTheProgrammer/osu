@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! Style Rhythm Game · Fixed Revive System</title>
+    <title>osu! Style · Click Anytime · Fixed Revive</title>
     <style>
         * {
             user-select: none;
@@ -17,7 +17,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: 'Segoe UI', 'Poppins', 'Inter', system-ui, -apple-system, sans-serif;
+            font-family: 'Segoe UI', 'Poppins', 'Inter', system-ui, sans-serif;
             margin: 0;
             padding: 20px;
         }
@@ -294,7 +294,7 @@
         <div id="gameStatusMsg" class="result-message">✨ Answer 3 questions to start!</div>
     </div>
     <div class="footer-meta">
-        🎧 Tap when shrinking circle matches pink circle! • Accuracy &lt;50% = lose life
+        🎧 Click ANYTIME on circles! Better timing = more points • Accuracy &lt;50% = lose life (once per drop)
     </div>
 </div>
 
@@ -307,8 +307,9 @@
         { name: "INSANE", noteCount: 70,  approachTime: 700,  radius: 30 }
     ];
     
-    const HIT_WINDOW_GOOD = 80;
-    const HIT_WINDOW_BAD = 160;
+    const HIT_WINDOW_PERFECT = 50;
+    const HIT_WINDOW_GOOD = 100;
+    const HIT_WINDOW_OK = 180;
     const BASE_SCORE = 250;
     const GAME_DURATION_MS = 32000;
     
@@ -331,7 +332,9 @@
     let questionBank = [];
     let quizActive = true;
     let gameLocked = true;
-    let alreadyLostLife = false; // PREVENTS MULTIPLE TRIGGERS
+    let pendingLifeLoss = false; // Track if we're already processing a life loss
+    let lifeLossCooldown = false; // Cooldown to prevent spam
+    let lastAccuracyCheck = 0;
     
     const canvasElem = document.getElementById('gameCanvas');
     ctx = canvasElem.getContext('2d');
@@ -357,7 +360,9 @@
                 { question: "Which planet is known as the Red Planet?", options: ["Mars", "Jupiter", "Venus", "Saturn"], correct: 0 },
                 { question: "What is 2 + 2?", options: ["3", "4", "5", "6"], correct: 1 },
                 { question: "Who painted the Mona Lisa?", options: ["Van Gogh", "Picasso", "Da Vinci", "Rembrandt"], correct: 2 },
-                { question: "What is the largest ocean?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 }
+                { question: "What is the largest ocean?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 },
+                { question: "What is the square root of 64?", options: ["6", "7", "8", "9"], correct: 2 },
+                { question: "Which animal is known as the 'King of the Jungle'?", options: ["Elephant", "Tiger", "Lion", "Gorilla"], correct: 2 }
             ];
             return questionBank;
         }
@@ -436,6 +441,7 @@
             <div class="quiz-container">
                 <div class="progress-badge" style="color:#ffaa66">⚠️ RESPAWN CHANCE ⚠️</div>
                 <div class="progress-badge">Answer correctly to revive! (1 life)</div>
+                <div class="progress-badge" style="color:#ff8888">Only ONE chance!</div>
                 <div class="quiz-question">${escapeHtml(q.question)}</div>
                 <div class="quiz-options">
                     ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${escapeHtml(opt)}</div>`).join('')}
@@ -488,26 +494,32 @@
                 countdown--;
             } else {
                 clearInterval(countdownInterval);
-                document.getElementById('gameStatusMsg').innerHTML = '🎵 GO! Tap when circles shrink!';
+                document.getElementById('gameStatusMsg').innerHTML = '🎵 GO! Click circles ANYTIME!';
                 gameStarted = true;
                 gameActive = true;
-                alreadyLostLife = false; // Reset life loss flag
+                pendingLifeLoss = false;
+                lifeLossCooldown = false;
                 fullReset();
             }
         }, 1000);
     }
     
     function checkAccuracyAndLives() {
-        // Don't check if game is paused, not active, or already processing a life loss
-        if (!gameActive || gameLocked || gamePausedForRespawn || !gameStarted || alreadyLostLife) return;
+        const now = Date.now();
+        
+        // Don't check if conditions not met
+        if (!gameActive || gameLocked || gamePausedForRespawn || !gameStarted) return;
+        if (pendingLifeLoss || lifeLossCooldown) return;
+        if (totalHits < 15) return; // Need at least 15 hits to check
         
         const accuracy = totalHits > 0 ? (successfulHits / totalHits) * 100 : 100;
         document.getElementById('accuracyWarning').innerHTML = `📊 ACC: ${accuracy.toFixed(1)}%`;
         document.getElementById('accValue').innerText = accuracy.toFixed(1);
         
-        // Only trigger if accuracy < 50%, have lives, and at least 10 hits (so not at start)
-        if (accuracy < 50 && lives > 0 && !gamePausedForRespawn && gameStarted && totalHits > 10) {
-            alreadyLostLife = true; // PREVENT MULTIPLE TRIGGERS
+        // Check if accuracy dropped below 50%
+        if (accuracy < 50 && lives > 0) {
+            console.log("Accuracy below 50%! Triggering life loss");
+            pendingLifeLoss = true;
             
             lives--;
             updateLivesDisplay();
@@ -526,8 +538,12 @@
                         lives++;
                         updateLivesDisplay();
                         gameActive = true;
-                        alreadyLostLife = false; // Reset flag for next potential loss
-                        document.getElementById('gameStatusMsg').innerHTML = '✨ Revived! Keep playing!';
+                        pendingLifeLoss = false;
+                        lifeLossCooldown = true; // Set cooldown
+                        setTimeout(() => {
+                            lifeLossCooldown = false;
+                        }, 5000); // 5 second cooldown before another life loss
+                        document.getElementById('gameStatusMsg').innerHTML = '✨ Revived! +1 life!';
                         setTimeout(() => {
                             if(gameActive && gameStarted) document.getElementById('gameStatusMsg').innerHTML = '🎧 Keep tapping!';
                         }, 2000);
@@ -668,24 +684,23 @@
                     }
                 }
                 
-                // Check misses
+                // Check misses (only if circle completely disappeared)
                 for(let i=0; i<circles.length; i++) {
                     const c = circles[i];
                     if(!c.hit) {
                         const missDelta = elapsed - c.targetTime;
-                        if(missDelta > HIT_WINDOW_BAD + 50) {
+                        if(missDelta > HIT_WINDOW_OK + 100) {
                             c.hit = true;
                             combo = 0;
                             totalHits++;
                             updateUIStats();
-                            checkAccuracyAndLives();
                         }
                     }
                 }
                 circles = circles.filter(c => {
                     if(c.hit) return false;
                     const nowMs = elapsed;
-                    if(nowMs - c.targetTime > HIT_WINDOW_BAD + 80) return false;
+                    if(nowMs - c.targetTime > HIT_WINDOW_OK + 120) return false;
                     return true;
                 });
             }
@@ -731,47 +746,70 @@
         
         const elapsedGame = performance.now() - gameStartTimestamp;
         
+        // Find closest circle by position (any visible circle)
         let closestCircle = null;
-        let minDistance = 60;
+        let minDistance = 80;
+        
         for(let i=0; i<circles.length; i++) {
             const c = circles[i];
             if(c.hit) continue;
             const dx = c.x - canvasX;
             const dy = c.y - canvasY;
             const dist = Math.hypot(dx, dy);
-            const tapRad = c.radius * 1.4;
-            if(dist <= tapRad) {
-                const timeDiff = Math.abs(elapsedGame - c.targetTime);
-                if(timeDiff <= HIT_WINDOW_BAD) {
-                    if(!closestCircle || dist < minDistance) {
-                        minDistance = dist;
-                        closestCircle = c;
-                    }
+            // Hit radius is larger - can click even when circle is big
+            const hitRadius = c.radius * 1.8;
+            if(dist <= hitRadius) {
+                if(!closestCircle || dist < minDistance) {
+                    minDistance = dist;
+                    closestCircle = c;
                 }
             }
         }
         
         if(closestCircle) {
-            const hitTimeDiff = Math.abs(elapsedGame - closestCircle.targetTime);
-            let points = BASE_SCORE;
-            let isPerfect = hitTimeDiff <= HIT_WINDOW_GOOD;
-            if(isPerfect) points = BASE_SCORE;
-            else points = Math.floor(BASE_SCORE * 0.7);
-            let finalAdd = points + Math.floor(combo * 4);
+            const timeDiff = Math.abs(elapsedGame - closestCircle.targetTime);
+            let points, accuracy;
+            let judgement = "";
+            
+            // Score based on timing (more accurate = more points)
+            if (timeDiff <= HIT_WINDOW_PERFECT) {
+                points = BASE_SCORE;
+                accuracy = 1.0;
+                judgement = "🔥 PERFECT!";
+            } else if (timeDiff <= HIT_WINDOW_GOOD) {
+                points = Math.floor(BASE_SCORE * 0.85);
+                accuracy = 0.85;
+                judgement = "👍 GOOD!";
+            } else if (timeDiff <= HIT_WINDOW_OK) {
+                points = Math.floor(BASE_SCORE * 0.6);
+                accuracy = 0.6;
+                judgement = "👌 OK!";
+            } else {
+                // Late hit but still counts
+                points = Math.floor(BASE_SCORE * 0.3);
+                accuracy = 0.3;
+                judgement = "⚠️ LATE!";
+            }
+            
+            // Combo bonus
+            let finalAdd = points + Math.floor(combo * 3);
             score += finalAdd;
             combo++;
             if(combo > maxCombo) maxCombo = combo;
             successfulHits++;
             totalHits++;
             closestCircle.hit = true;
+            
             updateUIStats();
-            checkAccuracyAndLives();
+            checkAccuracyAndLives(); // Check after each hit
+            
             window.lastHitEffect = { x: closestCircle.x, y: closestCircle.y, timer: 8 };
-            document.getElementById('gameStatusMsg').innerHTML = isPerfect ? "🔥 PERFECT!" : "👍 GOOD!";
+            document.getElementById('gameStatusMsg').innerHTML = judgement;
             setTimeout(()=>{
                 if(gameActive && !gamePausedForRespawn && gameStarted) document.getElementById('gameStatusMsg').innerHTML = `🎧 Keep tapping!`;
             }, 200);
         } else {
+            // Miss
             combo = 0;
             totalHits++;
             updateUIStats();
@@ -847,7 +885,7 @@
         // Hit flash effect
         if(window.lastHitEffect && window.lastHitEffect.timer > 0) {
             ctx.beginPath();
-            ctx.arc(window.lastHitEffect.x, window.lastHitEffect.y, 45, 0, Math.PI*2);
+            ctx.arc(window.lastHitEffect.x, window.lastHitEffect.y, 50, 0, Math.PI*2);
             ctx.fillStyle = "#ffffffcc";
             ctx.fill();
             window.lastHitEffect.timer--;
@@ -915,7 +953,8 @@
             lives = 2;
             gamePausedForRespawn = false;
             gameStarted = false;
-            alreadyLostLife = false;
+            pendingLifeLoss = false;
+            lifeLossCooldown = false;
             updateLivesDisplay();
             startCountdown();
         }
@@ -934,7 +973,8 @@
                 if(gameActive && gameStarted && !gameLocked && !quizActive) {
                     if(animationId) cancelAnimationFrame(animationId);
                     gameStarted = false;
-                    alreadyLostLife = false;
+                    pendingLifeLoss = false;
+                    lifeLossCooldown = false;
                     setTimeout(() => startCountdown(), 300);
                 }
             }
