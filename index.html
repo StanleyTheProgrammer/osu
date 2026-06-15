@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! Rhythm Game · iPad Friendly</title>
+    <title>osu! Style Rhythm Game · Proper Approach Circles</title>
     <style>
         * {
             user-select: none;
@@ -20,10 +20,8 @@
             font-family: 'Segoe UI', 'Poppins', 'Inter', system-ui, -apple-system, sans-serif;
             margin: 0;
             padding: 20px;
-            touch-action: pan-x pan-y; /* Allow scrolling but not zoom */
         }
 
-        /* Quiz Modal */
         .quiz-overlay {
             position: fixed;
             top: 0;
@@ -36,7 +34,6 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            touch-action: none;
         }
 
         .quiz-container {
@@ -300,53 +297,49 @@
         <div id="gameStatusMsg" class="result-message">✨ Answer 3 questions to start!</div>
     </div>
     <div class="footer-meta">
-        🎧 Tap circles • Accuracy &lt;50% = lose life • Answer question to revive
+        🎧 Tap when the shrinking circle matches the inner circle! • Accuracy &lt;50% = lose life
     </div>
 </div>
 
 <script>
-    // Game configuration - SLOWER start for reaction time
+    // Game configuration
     const difficulties = [
-        { name: "EASY",   noteCount: 30,  approachRate: 1.3, radius: 38, speed: 0.7 },
-        { name: "NORMAL", noteCount: 40,  approachRate: 1.1, radius: 35, speed: 0.85 },
-        { name: "HARD",   noteCount: 55,  approachRate: 0.95, radius: 32, speed: 1.0 },
-        { name: "INSANE", noteCount: 70,  approachRate: 0.8, radius: 30, speed: 1.15 }
+        { name: "EASY",   noteCount: 30,  approachTime: 1200, radius: 38 },
+        { name: "NORMAL", noteCount: 40,  approachTime: 1000, radius: 35 },
+        { name: "HARD",   noteCount: 55,  approachTime: 850,  radius: 32 },
+        { name: "INSANE", noteCount: 70,  approachTime: 700,  radius: 30 }
     ];
     
-    const HIT_WINDOW_GOOD = 100;   // More forgiving
-    const HIT_WINDOW_BAD = 200;
+    const HIT_WINDOW_GOOD = 80;
+    const HIT_WINDOW_BAD = 160;
     const BASE_SCORE = 250;
     const GAME_DURATION_MS = 32000;
-    const START_DELAY_MS = 1500;   // 1.5 seconds to prepare!
+    const START_DELAY_MS = 1800;
     
     let canvas, ctx;
     let circles = [];
     let score = 0, combo = 0, maxCombo = 0, totalHits = 0, successfulHits = 0;
     let gameActive = false;
-    let currentDifficulty = 0;  // Start with EASY for better experience
+    let currentDifficulty = 0;
     let gameStartTimestamp = 0;
     let animationId = null;
     let beatTimestamps = [];
     let pendingNotes = [];
     let nextSpawnIdx = 0;
-    let gameStarted = false;  // Track if countdown finished
+    let gameStarted = false;
     
     // Lives & Quiz system
     let lives = 2;
     let gamePausedForRespawn = false;
     let respawnOverlay = null;
     let questionBank = [];
-    
-    // Quiz state
     let quizActive = true;
     let gameLocked = true;
     
     const canvasElem = document.getElementById('gameCanvas');
     ctx = canvasElem.getContext('2d');
     
-    // Set canvas size properly
     function resizeCanvas() {
-        const container = canvasElem.parentElement;
         const maxWidth = Math.min(800, window.innerWidth - 40);
         canvasElem.style.width = `${maxWidth}px`;
         canvasElem.style.height = 'auto';
@@ -354,7 +347,6 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
     
-    // Load questions from JSON
     async function loadQuestions() {
         try {
             const response = await fetch('questions.json');
@@ -363,21 +355,17 @@
             questionBank = data.questions || data;
             return questionBank;
         } catch (error) {
-            console.error('Error loading questions:', error);
             questionBank = [
                 { question: "What is the capital of France?", options: ["London", "Berlin", "Paris", "Madrid"], correct: 2 },
                 { question: "Which planet is known as the Red Planet?", options: ["Mars", "Jupiter", "Venus", "Saturn"], correct: 0 },
                 { question: "What is 2 + 2?", options: ["3", "4", "5", "6"], correct: 1 },
                 { question: "Who painted the Mona Lisa?", options: ["Van Gogh", "Picasso", "Da Vinci", "Rembrandt"], correct: 2 },
-                { question: "What is the largest ocean?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 },
-                { question: "What is the square root of 64?", options: ["6", "7", "8", "9"], correct: 2 },
-                { question: "Which animal is known as the 'King of the Jungle'?", options: ["Elephant", "Tiger", "Lion", "Gorilla"], correct: 2 }
+                { question: "What is the largest ocean?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 }
             ];
             return questionBank;
         }
     }
     
-    // Show initial quiz (infinite chances)
     function showInitialQuiz(questions) {
         if (!questions || questions.length === 0) {
             startGameAfterQuiz();
@@ -387,7 +375,6 @@
         let currentQIndex = 0;
         const overlay = document.createElement('div');
         overlay.className = 'quiz-overlay';
-        overlay.id = 'quizOverlay';
         
         function updateQuizDisplay() {
             if (currentQIndex >= questions.length) {
@@ -399,8 +386,8 @@
             const q = questions[currentQIndex];
             overlay.innerHTML = `
                 <div class="quiz-container">
-                    <div class="progress-badge">📚 QUALIFICATION • QUESTION ${currentQIndex + 1}/${questions.length}</div>
-                    <div class="progress-badge" style="color:#88ff88">✨ Keep trying until correct!</div>
+                    <div class="progress-badge">📚 QUESTION ${currentQIndex + 1}/${questions.length}</div>
+                    <div class="progress-badge" style="color:#88ff88">✨ Infinite attempts!</div>
                     <div class="quiz-question">${escapeHtml(q.question)}</div>
                     <div class="quiz-options">
                         ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${escapeHtml(opt)}</div>`).join('')}
@@ -420,9 +407,9 @@
                         msg.style.color = '#ff8888';
                         msg.style.textAlign = 'center';
                         msg.style.marginTop = '15px';
-                        msg.innerText = '❌ Wrong answer! Try again (infinite attempts)';
+                        msg.innerText = '❌ Try again!';
                         overlay.querySelector('.quiz-container').appendChild(msg);
-                        setTimeout(() => msg.remove(), 1500);
+                        setTimeout(() => msg.remove(), 1200);
                     }
                 });
             });
@@ -432,14 +419,12 @@
         updateQuizDisplay();
     }
     
-    // Show respawn quiz (one chance to revive)
     function showRespawnQuiz(onComplete) {
         if (!questionBank || questionBank.length === 0) {
             onComplete(false);
             return;
         }
         
-        // Remove existing overlay if any
         if (respawnOverlay && respawnOverlay.parentNode) {
             respawnOverlay.remove();
         }
@@ -449,7 +434,6 @@
         
         respawnOverlay = document.createElement('div');
         respawnOverlay.className = 'quiz-overlay';
-        respawnOverlay.id = 'respawnOverlay';
         
         respawnOverlay.innerHTML = `
             <div class="quiz-container">
@@ -464,7 +448,6 @@
         
         document.body.appendChild(respawnOverlay);
         
-        // Add event listeners
         const options = respawnOverlay.querySelectorAll('.quiz-opt');
         options.forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -488,21 +471,16 @@
     function startGameAfterQuiz() {
         quizActive = false;
         gameLocked = false;
-        gameActive = false;  // Will be activated after countdown
-        document.getElementById('gameStatusMsg').innerHTML = '🎮 Get ready! Game starting in 1.5 seconds...';
+        gameActive = false;
         
-        // Enable difficulty buttons now
         document.querySelectorAll('.diff-btn').forEach(btn => {
             btn.style.pointerEvents = 'auto';
             btn.style.opacity = '1';
         });
         
-        // Start countdown then game
-        setTimeout(() => {
-            if (!gameLocked) {
-                startCountdown();
-            }
-        }, 500);
+        document.getElementById('gameStatusMsg').innerHTML = '🎮 Get ready!';
+        
+        setTimeout(() => startCountdown(), 500);
     }
     
     function startCountdown() {
@@ -513,7 +491,7 @@
                 countdown--;
             } else {
                 clearInterval(countdownInterval);
-                document.getElementById('gameStatusMsg').innerHTML = '🎵 GO! Tap circles!';
+                document.getElementById('gameStatusMsg').innerHTML = '🎵 GO! Tap when circles shrink!';
                 gameStarted = true;
                 gameActive = true;
                 fullReset();
@@ -521,7 +499,6 @@
         }, 1000);
     }
     
-    // Check accuracy and deduct lives
     function checkAccuracyAndLives() {
         if (!gameActive || gameLocked || gamePausedForRespawn || !gameStarted) return;
         
@@ -529,14 +506,12 @@
         document.getElementById('accuracyWarning').innerHTML = `📊 ACC: ${accuracy.toFixed(1)}%`;
         document.getElementById('accValue').innerText = accuracy.toFixed(1);
         
-        if (accuracy < 50 && lives > 0 && !gamePausedForRespawn && gameStarted) {
-            // Lose one life
+        if (accuracy < 50 && lives > 0 && !gamePausedForRespawn && gameStarted && totalHits > 10) {
             lives--;
             updateLivesDisplay();
             document.getElementById('gameStatusMsg').innerHTML = `⚠️ Accuracy below 50%! Lost 1 life (${lives} left)`;
             
             if (lives > 0) {
-                // Pause game and ask question
                 gameActive = false;
                 gamePausedForRespawn = true;
                 
@@ -575,26 +550,23 @@
         }
     }
     
-    // Generate beatmap with slower beginning
     function generateBeatmap(diffIndex) {
         const cfg = difficulties[diffIndex];
         const totalNotes = cfg.noteCount;
-        const startOffset = 2000;  // 2 seconds before first note
-        const endMargin = 800;
+        const startOffset = 2000;
+        const endMargin = 1000;
         const tStart = startOffset;
         const tEnd = GAME_DURATION_MS - endMargin;
         const timestamps = [];
         
         for(let i = 0; i < totalNotes; i++) {
-            // Easing function - notes start slower, get faster
             let t;
             if (i < totalNotes * 0.3) {
-                // First 30%: slower pace
-                t = tStart + (i / (totalNotes * 0.3)) * (tEnd * 0.3);
+                t = tStart + (i / (totalNotes * 0.3)) * (tEnd * 0.25);
             } else {
-                t = tStart + (tEnd * 0.3) + ((i - totalNotes * 0.3) / (totalNotes * 0.7)) * (tEnd * 0.7);
+                t = tStart + (tEnd * 0.25) + ((i - totalNotes * 0.3) / (totalNotes * 0.7)) * (tEnd * 0.75);
             }
-            t += (Math.random() - 0.5) * 40;
+            t += (Math.random() - 0.5) * 35;
             timestamps.push(Math.min(tEnd, Math.max(tStart, t)));
         }
         timestamps.sort((a,b)=>a-b);
@@ -605,8 +577,8 @@
         const margin = 70;
         const maxX = canvasElem.width - margin - radius;
         const minX = margin + radius;
-        const maxY = canvasElem.height - margin - radius*1.2;
-        const minY = margin + radius*1.2;
+        const maxY = canvasElem.height - margin - radius * 1.5;
+        const minY = margin + radius * 1.5;
         return {
             x: Math.floor(Math.random() * (maxX - minX + 1) + minX),
             y: Math.floor(Math.random() * (maxY - minY + 1) + minY)
@@ -636,7 +608,8 @@
                 y: pos.y,
                 radius: cfg.radius,
                 generated: false,
-                hit: false
+                hit: false,
+                approachTime: cfg.approachTime
             };
         });
         
@@ -662,10 +635,9 @@
             if(gameActive && !gamePausedForRespawn && gameStarted) {
                 // Spawn notes
                 if(pendingNotes && nextSpawnIdx < pendingNotes.length) {
-                    const approachLead = difficulties[currentDifficulty].approachRate * 500;
                     while(nextSpawnIdx < pendingNotes.length) {
                         const note = pendingNotes[nextSpawnIdx];
-                        const spawnTime = note.timeMs - approachLead;
+                        const spawnTime = note.timeMs - note.approachTime;
                         if(elapsed >= spawnTime) {
                             if(!note.generated && !note.hit) {
                                 note.generated = true;
@@ -675,7 +647,8 @@
                                     y: note.y,
                                     radius: note.radius,
                                     targetTime: note.timeMs,
-                                    hit: false
+                                    hit: false,
+                                    approachTime: note.approachTime
                                 });
                             }
                             nextSpawnIdx++;
@@ -707,7 +680,6 @@
                 });
             }
             
-            // Check game end
             const allNotesProcessed = pendingNotes && nextSpawnIdx >= pendingNotes.length && circles.length === 0;
             if(allNotesProcessed && gameActive && !gamePausedForRespawn && elapsed > GAME_DURATION_MS + 500) {
                 finishGame();
@@ -757,7 +729,7 @@
             const dx = c.x - canvasX;
             const dy = c.y - canvasY;
             const dist = Math.hypot(dx, dy);
-            const tapRad = c.radius * 1.6;
+            const tapRad = c.radius * 1.4;
             if(dist <= tapRad) {
                 const timeDiff = Math.abs(elapsedGame - c.targetTime);
                 if(timeDiff <= HIT_WINDOW_BAD) {
@@ -812,61 +784,81 @@
     function drawCanvas(nowElapsed = 0) {
         if(!ctx) return;
         ctx.clearRect(0, 0, canvasElem.width, canvasElem.height);
+        
+        // Background
         const grad = ctx.createLinearGradient(0,0,canvasElem.width,canvasElem.height);
         grad.addColorStop(0, '#141b2b');
         grad.addColorStop(1, '#0e1322');
         ctx.fillStyle = grad;
         ctx.fillRect(0,0,canvasElem.width,canvasElem.height);
         
-        const cfg = difficulties[currentDifficulty];
+        // Draw all circles
         for(let c of circles) {
-            const timeToHit = c.targetTime - nowElapsed;
-            let approachScale = 1.0;
-            if(timeToHit > 0) {
-                const leadTime = cfg.approachRate * 500;
-                if(leadTime > 0) {
-                    let t = Math.min(1, Math.max(0, (leadTime - timeToHit) / leadTime));
-                    approachScale = 0.5 + t * 1.3;
-                }
+            // Calculate approach circle scale (SHRINKS from large to small)
+            const timeUntilHit = c.targetTime - nowElapsed;
+            let approachScale;
+            
+            if (timeUntilHit > 0) {
+                // Circle starts large (scale 1.8) and shrinks to normal size (scale 1.0)
+                const progress = Math.min(1, Math.max(0, 1 - (timeUntilHit / c.approachTime)));
+                approachScale = 1.8 - (progress * 0.8); // 1.8 → 1.0
             } else {
-                approachScale = 1.6;
+                approachScale = 1.0; // Hit time passed, show normal size
             }
+            
             const approachRadius = c.radius * approachScale;
+            
+            // Draw approach ring (outer shrinking circle)
             ctx.beginPath();
-            ctx.arc(c.x, c.y, approachRadius, 0, Math.PI*2);
-            ctx.strokeStyle = "#ffddff";
-            ctx.lineWidth = 3;
+            ctx.arc(c.x, c.y, approachRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255, 200, 255, ${Math.min(1, 1 - (timeUntilHit / c.approachTime) * 0.5)})`;
+            ctx.lineWidth = 4;
             ctx.stroke();
+            
+            // Draw inner circle (hit circle)
             ctx.beginPath();
-            ctx.arc(c.x, c.y, c.radius-2, 0, Math.PI*2);
+            ctx.arc(c.x, c.y, c.radius - 2, 0, Math.PI * 2);
             ctx.fillStyle = "#fe7fb5";
             ctx.fill();
-            ctx.fillStyle = "#ffffff";
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "#ff66aa";
+            
+            // Draw center
             ctx.beginPath();
-            ctx.arc(c.x, c.y, c.radius-6, 0, Math.PI*2);
+            ctx.arc(c.x, c.y, c.radius - 8, 0, Math.PI * 2);
+            ctx.fillStyle = "#ffffff";
             ctx.fill();
+            
+            // Draw hit number
+            ctx.font = `bold ${Math.floor(c.radius * 0.6)}px "Segoe UI"`;
+            ctx.fillStyle = "#2a1a3a";
+            ctx.shadowBlur = 0;
+            ctx.fillText("●", c.x - 7, c.y + 6);
         }
         
+        // Hit flash effect
         if(window.lastHitEffect && window.lastHitEffect.timer > 0) {
             ctx.beginPath();
             ctx.arc(window.lastHitEffect.x, window.lastHitEffect.y, 45, 0, Math.PI*2);
-            ctx.fillStyle = "#ffffffaa";
+            ctx.fillStyle = "#ffffffcc";
             ctx.fill();
             window.lastHitEffect.timer--;
             if(window.lastHitEffect.timer <=0) window.lastHitEffect = null;
         }
         
+        // Combo display
         if(combo >= 5 && gameStarted && gameActive) {
-            ctx.font = `bold 28px "Montserrat"`;
+            ctx.font = `bold 32px "Montserrat"`;
             ctx.fillStyle = "#ffe6b3";
             ctx.shadowBlur = 8;
             ctx.shadowColor = "#ff66aa";
-            ctx.fillText(`${combo}x`, canvasElem.width-80, 65);
+            ctx.fillText(`${combo}x`, canvasElem.width - 85, 70);
             ctx.shadowBlur = 0;
         }
         
+        // Ready text
         if (!gameStarted && !gameLocked) {
-            ctx.font = `bold 32px "Montserrat"`;
+            ctx.font = `bold 36px "Montserrat"`;
             ctx.fillStyle = "#ffdd99";
             ctx.shadowBlur = 10;
             ctx.textAlign = "center";
@@ -875,17 +867,18 @@
             ctx.shadowBlur = 0;
         }
         
+        // Progress bar
         const elapsed = performance.now() - gameStartTimestamp;
         const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION_MS));
         ctx.fillStyle = "#ff66aa90";
-        ctx.fillRect(20, canvasElem.height-25, (canvasElem.width-40) * prog, 10);
+        ctx.fillRect(20, canvasElem.height - 25, (canvasElem.width - 40) * prog, 10);
         ctx.fillStyle = "#ffffff30";
-        ctx.fillRect(20, canvasElem.height-25, canvasElem.width-40, 10);
+        ctx.fillRect(20, canvasElem.height - 25, canvasElem.width - 40, 10);
         ctx.fillStyle = "#ffaaee";
-        ctx.fillRect(20, canvasElem.height-25, (canvasElem.width-40) * prog, 10);
+        ctx.fillRect(20, canvasElem.height - 25, (canvasElem.width - 40) * prog, 10);
     }
     
-    // Event binding for touch and mouse
+    // Event handling
     function handleTapEvent(e) {
         e.preventDefault();
         let clientX, clientY;
@@ -919,18 +912,16 @@
         }
     });
     
-    // Difficulty selection - NOW FULLY FUNCTIONAL
+    // Difficulty selection
     document.querySelectorAll('.diff-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            // Allow difficulty change even before game starts
             const newDiff = parseInt(btn.getAttribute('data-diff'));
             if(!isNaN(newDiff) && newDiff !== currentDifficulty) {
                 currentDifficulty = newDiff;
                 document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 
-                // If game is active, restart with new difficulty
                 if(gameActive && gameStarted && !gameLocked && !quizActive) {
                     if(animationId) cancelAnimationFrame(animationId);
                     gameStarted = false;
@@ -940,25 +931,4 @@
         });
     });
     
-    // Initially disable difficulty buttons until quiz is done
-    document.querySelectorAll('.diff-btn').forEach(btn => {
-        btn.style.pointerEvents = 'none';
-        btn.style.opacity = '0.6';
-    });
-    
-    // Initialize game with quiz
-    async function init() {
-        const questions = await loadQuestions();
-        const shuffled = [...questions];
-        for(let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        const initialQuestions = shuffled.slice(0, 3);
-        showInitialQuiz(initialQuestions);
-    }
-    
-    init();
-</script>
-</body>
-</html>
+    document.querySelectorAll('.diff-btn').forEach(
