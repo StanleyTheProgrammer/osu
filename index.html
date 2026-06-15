@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! Style · TRUE Difficulty · Insane Mode</title>
+    <title>osu! Style · Drag Notes · 60% Accuracy Death</title>
     <style>
         * {
             user-select: none;
             -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
+            touch-action: none;
         }
 
         body {
@@ -20,6 +20,7 @@
             font-family: 'Segoe UI', 'Poppins', 'Inter', system-ui, sans-serif;
             margin: 0;
             padding: 20px;
+            touch-action: none;
         }
 
         .quiz-overlay {
@@ -342,7 +343,7 @@
         <div id="gameStatusMsg" class="result-message">✨ Answer 3 questions to start!</div>
     </div>
     <div class="footer-meta">
-        🎧 HARD = 2x notes, INSANE = 3x notes + super fast approach • Accuracy only drops on MISS
+        🎧 TAP circles • DRAG sliders (follow the path) • Accuracy &lt;60% = INSTANT DEATH!
     </div>
 </div>
 
@@ -351,55 +352,63 @@
     const difficulties = [
         { 
             name: "EASY",   
-            noteCount: 28,      // Slow pace
-            approachTime: 1400, // Very slow approach (1.4 seconds)
-            radius: 40,         // Bigger circles
-            timingWindow: 1.2,  // More forgiving
+            noteCount: 28,
+            sliderCount: 5,
+            approachTime: 1400,
+            radius: 40,
+            timingWindow: 1.2,
             color: "#88ff88"
         },
         { 
             name: "NORMAL", 
-            noteCount: 45,      // Moderate
-            approachTime: 1000, // Normal speed
+            noteCount: 40,
+            sliderCount: 8,
+            approachTime: 1000,
             radius: 35,
             timingWindow: 1.0,
             color: "#ffaa66"
         },
         { 
             name: "HARD",   
-            noteCount: 75,      // 2.6x more notes than Easy!
-            approachTime: 650,  // Fast approach (0.65 seconds)
-            radius: 30,         // Smaller circles
-            timingWindow: 0.8,  // Less forgiving
+            noteCount: 60,
+            sliderCount: 12,
+            approachTime: 650,
+            radius: 30,
+            timingWindow: 0.8,
             color: "#ff6666"
         },
         { 
             name: "INSANE", 
-            noteCount: 105,     // 3.75x more notes than Easy! DENSE!
-            approachTime: 450,  // EXTREMELY FAST (0.45 seconds to react!)
-            radius: 26,         // Tiny circles
-            timingWindow: 0.65, // Very strict timing
+            noteCount: 80,
+            sliderCount: 18,
+            approachTime: 450,
+            radius: 26,
+            timingWindow: 0.65,
             color: "#ff44ff"
         }
     ];
     
-    // Timing windows scale with difficulty
     const HIT_WINDOW_PERFECT_BASE = 50;
     const HIT_WINDOW_GOOD_BASE = 100;
     const HIT_WINDOW_OK_BASE = 180;
     const BASE_SCORE = 250;
-    const GAME_DURATION_MS = 32000;
+    const SLIDER_BASE_SCORE = 150;
+    const GAME_DURATION_MS = 35000;
     
     let canvas, ctx;
     let circles = [];
+    let sliders = [];
+    let activeDrag = null;
+    let dragProgress = 0;
     let score = 0, combo = 0, maxCombo = 0, totalHits = 0, misses = 0;
     let gameActive = false;
-    let currentDifficulty = 1; // Start NORMAL
+    let currentDifficulty = 1;
     let gameStartTimestamp = 0;
     let animationId = null;
     let beatTimestamps = [];
-    let pendingNotes = [];
-    let nextSpawnIdx = 0;
+    let sliderData = [];
+    let nextCircleIdx = 0;
+    let nextSliderIdx = 0;
     let gameStarted = false;
     
     let lives = 2;
@@ -410,11 +419,11 @@
     let gameLocked = true;
     let pendingLifeLoss = false;
     let lifeLossCooldown = false;
+    let deathTriggered = false;
     
     const canvasElem = document.getElementById('gameCanvas');
     ctx = canvasElem.getContext('2d');
     
-    // Get dynamic timing windows based on difficulty
     function getHitWindows() {
         const diff = difficulties[currentDifficulty];
         const scale = diff.timingWindow;
@@ -433,10 +442,7 @@
         div.style.top = (y - 50) + 'px';
         div.style.color = color;
         document.body.appendChild(div);
-        
-        setTimeout(() => {
-            if (div && div.parentNode) div.remove();
-        }, 800);
+        setTimeout(() => { if (div && div.parentNode) div.remove(); }, 800);
     }
     
     function updateDifficultyIndicator() {
@@ -474,46 +480,22 @@
     }
     
     function showInitialQuiz(questions) {
-        if (!questions || questions.length === 0) {
-            startGameAfterQuiz();
-            return;
-        }
-        
+        if (!questions || questions.length === 0) { startGameAfterQuiz(); return; }
         let currentQIndex = 0;
         const overlay = document.createElement('div');
         overlay.className = 'quiz-overlay';
-        
         function updateQuizDisplay() {
-            if (currentQIndex >= questions.length) {
-                overlay.remove();
-                startGameAfterQuiz();
-                return;
-            }
-            
+            if (currentQIndex >= questions.length) { overlay.remove(); startGameAfterQuiz(); return; }
             const q = questions[currentQIndex];
-            overlay.innerHTML = `
-                <div class="quiz-container">
-                    <div class="progress-badge">📚 QUESTION ${currentQIndex + 1}/${questions.length}</div>
-                    <div class="progress-badge" style="color:#88ff88">✨ Infinite attempts!</div>
-                    <div class="quiz-question">${escapeHtml(q.question)}</div>
-                    <div class="quiz-options">
-                        ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${escapeHtml(opt)}</div>`).join('')}
-                    </div>
-                </div>
-            `;
-            
+            overlay.innerHTML = `<div class="quiz-container"><div class="progress-badge">📚 QUESTION ${currentQIndex + 1}/${questions.length}</div><div class="progress-badge" style="color:#88ff88">✨ Infinite attempts!</div><div class="quiz-question">${escapeHtml(q.question)}</div><div class="quiz-options">${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${escapeHtml(opt)}</div>`).join('')}</div></div>`;
             document.querySelectorAll('.quiz-opt').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const selected = parseInt(btn.dataset.opt);
-                    if (selected === q.correct) {
-                        currentQIndex++;
-                        updateQuizDisplay();
-                    } else {
+                    if (selected === q.correct) { currentQIndex++; updateQuizDisplay(); }
+                    else {
                         const msg = document.createElement('div');
-                        msg.style.color = '#ff8888';
-                        msg.style.textAlign = 'center';
-                        msg.style.marginTop = '15px';
+                        msg.style.cssText = 'color:#ff8888;text-align:center;margin-top:15px';
                         msg.innerText = '❌ Try again!';
                         overlay.querySelector('.quiz-container').appendChild(msg);
                         setTimeout(() => msg.remove(), 1200);
@@ -521,160 +503,70 @@
                 });
             });
         }
-        
         document.body.appendChild(overlay);
         updateQuizDisplay();
     }
     
     function showRespawnQuiz(onComplete) {
-        if (!questionBank || questionBank.length === 0) {
-            onComplete(false);
-            return;
-        }
-        
-        if (respawnOverlay && respawnOverlay.parentNode) {
-            respawnOverlay.remove();
-        }
-        
+        if (!questionBank || questionBank.length === 0) { onComplete(false); return; }
+        if (respawnOverlay && respawnOverlay.parentNode) respawnOverlay.remove();
         const randomIndex = Math.floor(Math.random() * questionBank.length);
         const q = questionBank[randomIndex];
-        
         respawnOverlay = document.createElement('div');
         respawnOverlay.className = 'quiz-overlay';
-        
-        respawnOverlay.innerHTML = `
-            <div class="quiz-container">
-                <div class="progress-badge" style="color:#ffaa66">⚠️ RESPAWN CHANCE ⚠️</div>
-                <div class="progress-badge">Answer correctly to revive! (1 life)</div>
-                <div class="progress-badge" style="color:#ff8888">Only ONE chance!</div>
-                <div class="quiz-question">${escapeHtml(q.question)}</div>
-                <div class="quiz-options">
-                    ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${escapeHtml(opt)}</div>`).join('')}
-                </div>
-            </div>
-        `;
-        
+        respawnOverlay.innerHTML = `<div class="quiz-container"><div class="progress-badge" style="color:#ffaa66">⚠️ RESPAWN CHANCE ⚠️</div><div class="progress-badge">Answer correctly to revive! (1 life)</div><div class="progress-badge" style="color:#ff8888">Only ONE chance!</div><div class="quiz-question">${escapeHtml(q.question)}</div><div class="quiz-options">${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${escapeHtml(opt)}</div>`).join('')}</div></div>`;
         document.body.appendChild(respawnOverlay);
-        
         const options = respawnOverlay.querySelectorAll('.quiz-opt');
         options.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const selected = parseInt(btn.dataset.opt);
-                if (respawnOverlay && respawnOverlay.parentNode) {
-                    respawnOverlay.remove();
-                    respawnOverlay = null;
-                }
+                if (respawnOverlay && respawnOverlay.parentNode) respawnOverlay.remove();
                 onComplete(selected === q.correct);
             });
         });
     }
     
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+    function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
     
     function startGameAfterQuiz() {
-        quizActive = false;
-        gameLocked = false;
-        gameActive = false;
-        
-        document.querySelectorAll('.diff-btn').forEach(btn => {
-            btn.style.pointerEvents = 'auto';
-            btn.style.opacity = '1';
-        });
-        
+        quizActive = false; gameLocked = false; gameActive = false;
+        document.querySelectorAll('.diff-btn').forEach(btn => { btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; });
         document.getElementById('gameStatusMsg').innerHTML = '🎮 Get ready!';
-        
         setTimeout(() => startCountdown(), 500);
     }
     
     function startCountdown() {
         let countdown = 3;
         const countdownInterval = setInterval(() => {
-            if (countdown > 0) {
-                document.getElementById('gameStatusMsg').innerHTML = `🎯 ${countdown}...`;
-                countdown--;
-            } else {
+            if (countdown > 0) { document.getElementById('gameStatusMsg').innerHTML = `🎯 ${countdown}...`; countdown--; }
+            else {
                 clearInterval(countdownInterval);
-                document.getElementById('gameStatusMsg').innerHTML = '🎵 GO! Click circles ANYTIME!';
-                gameStarted = true;
-                gameActive = true;
-                pendingLifeLoss = false;
-                lifeLossCooldown = false;
+                document.getElementById('gameStatusMsg').innerHTML = '🎵 GO! Tap circles & drag sliders!';
+                gameStarted = true; gameActive = true;
+                pendingLifeLoss = false; lifeLossCooldown = false; deathTriggered = false;
                 fullReset();
             }
         }, 1000);
     }
     
     function calculateAndUpdateAccuracy() {
-        let accuracy;
-        if (totalHits + misses === 0) {
-            accuracy = 100;
-        } else {
-            accuracy = (totalHits / (totalHits + misses)) * 100;
-        }
-        
+        let accuracy = (totalHits + misses === 0) ? 100 : (totalHits / (totalHits + misses)) * 100;
         document.getElementById('accuracyWarning').innerHTML = `📊 ACC: ${accuracy.toFixed(1)}%`;
         document.getElementById('accValue').innerText = accuracy.toFixed(1);
         
-        return accuracy;
-    }
-    
-    function checkAccuracyAndLives() {
-        if (!gameActive || gameLocked || gamePausedForRespawn || !gameStarted) return;
-        if (pendingLifeLoss || lifeLossCooldown) return;
-        if (totalHits + misses < 15) return;
-        
-        const accuracy = calculateAndUpdateAccuracy();
-        
-        if (accuracy < 50 && lives > 0) {
-            pendingLifeLoss = true;
-            
-            lives--;
-            updateLivesDisplay();
-            document.getElementById('gameStatusMsg').innerHTML = `⚠️ Accuracy below 50%! Lost 1 life (${lives} left)`;
-            showFloatingJudgement("LOST LIFE", canvasElem.width/2, canvasElem.height/2, "#ff6666");
-            
-            if (lives >= 0) {
-                gameActive = false;
-                gamePausedForRespawn = true;
-                
-                showRespawnQuiz((success) => {
-                    gamePausedForRespawn = false;
-                    
-                    if (success) {
-                        lives++;
-                        updateLivesDisplay();
-                        gameActive = true;
-                        pendingLifeLoss = false;
-                        lifeLossCooldown = true;
-                        setTimeout(() => {
-                            lifeLossCooldown = false;
-                        }, 5000);
-                        document.getElementById('gameStatusMsg').innerHTML = '✨ Revived! +1 life!';
-                        showFloatingJudgement("REVIVED!", canvasElem.width/2, canvasElem.height/2, "#88ff88");
-                        setTimeout(() => {
-                            if(gameActive && gameStarted) document.getElementById('gameStatusMsg').innerHTML = '🎧 Keep tapping!';
-                        }, 2000);
-                    } else {
-                        gameActive = false;
-                        gameLocked = true;
-                        gameStarted = false;
-                        document.getElementById('gameStatusMsg').innerHTML = '💀 GAME OVER - Failed to revive! 💀';
-                        document.getElementById('livesDisplay').innerHTML = `❤️ LIVES: 0`;
-                        showFloatingJudgement("GAME OVER", canvasElem.width/2, canvasElem.height/2, "#ff4444");
-                    }
-                });
-            } else {
-                gameActive = false;
-                gameLocked = true;
-                gameStarted = false;
-                document.getElementById('gameStatusMsg').innerHTML = '💀 GAME OVER - No lives remaining! 💀';
-            }
+        // INSTANT DEATH if accuracy < 60% and game is active
+        if (accuracy < 60 && gameActive && gameStarted && !gamePausedForRespawn && !deathTriggered && (totalHits + misses) > 10) {
+            deathTriggered = true;
+            gameActive = false;
+            gameStarted = false;
+            gameLocked = true;
+            document.getElementById('gameStatusMsg').innerHTML = '💀 INSTANT DEATH - Accuracy fell below 60%! 💀';
+            document.getElementById('livesDisplay').innerHTML = `❤️ LIVES: 0`;
+            showFloatingJudgement("ACCURACY FAILURE", canvasElem.width/2, canvasElem.height/2, "#ff0000");
+            if (animationId) cancelAnimationFrame(animationId);
         }
+        return accuracy;
     }
     
     function updateLivesDisplay() {
@@ -682,43 +574,61 @@
         if (lives <= 0) {
             document.getElementById('livesDisplay').style.borderColor = '#ff0000';
             document.getElementById('livesDisplay').style.color = '#ff6666';
-        } else {
-            document.getElementById('livesDisplay').style.borderColor = '#ff6699';
-            document.getElementById('livesDisplay').style.color = 'white';
         }
+    }
+    
+    function generateSliderPath(startX, startY, endX, endY, duration) {
+        const points = [];
+        const steps = 20;
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const x = startX + (endX - startX) * t;
+            const y = startY + (endY - startY) * t + Math.sin(t * Math.PI * 2) * 15;
+            points.push({ x, y });
+        }
+        return points;
     }
     
     function generateBeatmap(diffIndex) {
         const cfg = difficulties[diffIndex];
         const totalNotes = cfg.noteCount;
+        const totalSliders = cfg.sliderCount;
         const startOffset = 1500;
-        const endMargin = 800;
-        const tStart = startOffset;
-        const tEnd = GAME_DURATION_MS - endMargin;
-        const timestamps = [];
+        const tEnd = GAME_DURATION_MS - 800;
         
-        // For harder difficulties, notes are more concentrated (less breathing room)
+        const timestamps = [];
+        const sliders = [];
+        
         for(let i = 0; i < totalNotes; i++) {
-            let t;
-            if (diffIndex <= 1) {
-                // Easy/Normal: gradual increase
-                if (i < totalNotes * 0.3) {
-                    t = tStart + (i / (totalNotes * 0.3)) * (tEnd * 0.25);
-                } else {
-                    t = tStart + (tEnd * 0.25) + ((i - totalNotes * 0.3) / (totalNotes * 0.7)) * (tEnd * 0.75);
-                }
-            } else {
-                // Hard/Insane: more aggressive, constant pressure
-                t = tStart + (i / totalNotes) * tEnd;
-            }
-            
-            // Add less randomness for harder difficulties (more precise)
-            const randomFactor = diffIndex <= 1 ? 35 : 20;
-            t += (Math.random() - 0.5) * randomFactor;
-            timestamps.push(Math.min(tEnd, Math.max(tStart, t)));
+            let t = startOffset + (i / totalNotes) * (tEnd - startOffset);
+            t += (Math.random() - 0.5) * 30;
+            timestamps.push(Math.min(tEnd, Math.max(startOffset, t)));
         }
+        
+        for(let i = 0; i < totalSliders; i++) {
+            let t = startOffset + 500 + (i / totalSliders) * (tEnd - startOffset - 500);
+            t += (Math.random() - 0.5) * 40;
+            sliders.push(Math.min(tEnd - 200, Math.max(startOffset + 300, t)));
+        }
+        
         timestamps.sort((a,b)=>a-b);
-        return timestamps;
+        sliders.sort((a,b)=>a-b);
+        
+        // Generate random positions for sliders
+        const sliderPositions = [];
+        for(let i = 0; i < totalSliders; i++) {
+            const margin = 80;
+            const radius = 30;
+            const startX = Math.random() * (canvasElem.width - 2 * margin) + margin;
+            const startY = Math.random() * (canvasElem.height - 2 * margin) + margin;
+            let endX = startX + (Math.random() - 0.5) * 150;
+            let endY = startY + (Math.random() - 0.5) * 100;
+            endX = Math.min(canvasElem.width - margin, Math.max(margin, endX));
+            endY = Math.min(canvasElem.height - margin, Math.max(margin, endY));
+            sliderPositions.push({ startX, startY, endX, endY });
+        }
+        
+        return { circles: timestamps, sliders: sliders, sliderPositions: sliderPositions };
     }
     
     function randomHitPosition(radius) {
@@ -727,83 +637,60 @@
         const minX = margin + radius;
         const maxY = canvasElem.height - margin - radius * 1.5;
         const minY = margin + radius * 1.5;
-        return {
-            x: Math.floor(Math.random() * (maxX - minX + 1) + minX),
-            y: Math.floor(Math.random() * (maxY - minY + 1) + minY)
-        };
+        return { x: Math.floor(Math.random() * (maxX - minX + 1) + minX), y: Math.floor(Math.random() * (maxY - minY + 1) + minY) };
     }
     
     function fullReset() {
         if(animationId) cancelAnimationFrame(animationId);
+        circles = []; sliders = []; activeDrag = null;
+        score = 0; combo = 0; maxCombo = 0; totalHits = 0; misses = 0;
+        updateUIStats(); calculateAndUpdateAccuracy();
         
-        circles = [];
-        score = 0;
-        combo = 0;
-        maxCombo = 0;
-        totalHits = 0;
-        misses = 0;
-        updateUIStats();
-        calculateAndUpdateAccuracy();
-        
-        beatTimestamps = generateBeatmap(currentDifficulty);
+        const beatmap = generateBeatmap(currentDifficulty);
         const cfg = difficulties[currentDifficulty];
         
-        pendingNotes = beatTimestamps.map((timestamp, idx) => {
+        const circleData = beatmap.circles.map((timestamp, idx) => {
             const pos = randomHitPosition(cfg.radius);
-            return {
-                timeMs: timestamp,
-                id: idx,
-                x: pos.x,
-                y: pos.y,
-                radius: cfg.radius,
-                generated: false,
-                hit: false,
-                approachTime: cfg.approachTime
+            return { timeMs: timestamp, id: `c${idx}`, x: pos.x, y: pos.y, radius: cfg.radius, generated: false, hit: false, approachTime: cfg.approachTime, type: 'circle' };
+        });
+        
+        const sliderObjects = beatmap.sliders.map((timestamp, idx) => {
+            const pos = beatmap.sliderPositions[idx];
+            const path = generateSliderPath(pos.startX, pos.startY, pos.endX, pos.endY, cfg.approachTime);
+            return { 
+                timeMs: timestamp, id: `s${idx}`, startX: pos.startX, startY: pos.startY, 
+                endX: pos.endX, endY: pos.endY, path: path, radius: cfg.radius - 4,
+                generated: false, hit: false, completed: false, approachTime: cfg.approachTime,
+                type: 'slider', dragProgress: 0
             };
         });
         
-        nextSpawnIdx = 0;
+        const allNotes = [...circleData, ...sliderObjects];
+        allNotes.sort((a,b) => a.timeMs - b.timeMs);
+        
+        pendingNotes = allNotes;
+        nextCircleIdx = 0;
         gameStartTimestamp = performance.now();
         
         function gameUpdate() {
-            if(!gameStarted) {
-                drawCanvas(0);
-                animationId = requestAnimationFrame(gameUpdate);
-                return;
-            }
-            
-            if((!gameActive || gamePausedForRespawn)) {
-                drawCanvas(performance.now() - gameStartTimestamp);
-                animationId = requestAnimationFrame(gameUpdate);
-                return;
-            }
+            if(!gameStarted) { drawCanvas(0); animationId = requestAnimationFrame(gameUpdate); return; }
+            if((!gameActive || gamePausedForRespawn)) { drawCanvas(performance.now() - gameStartTimestamp); animationId = requestAnimationFrame(gameUpdate); return; }
             
             const now = performance.now();
             const elapsed = now - gameStartTimestamp;
             
             if(gameActive && !gamePausedForRespawn && gameStarted) {
-                if(pendingNotes && nextSpawnIdx < pendingNotes.length) {
-                    while(nextSpawnIdx < pendingNotes.length) {
-                        const note = pendingNotes[nextSpawnIdx];
-                        const spawnTime = note.timeMs - note.approachTime;
-                        if(elapsed >= spawnTime) {
-                            if(!note.generated && !note.hit) {
-                                note.generated = true;
-                                circles.push({
-                                    id: note.id,
-                                    x: note.x,
-                                    y: note.y,
-                                    radius: note.radius,
-                                    targetTime: note.timeMs,
-                                    hit: false,
-                                    approachTime: note.approachTime
-                                });
-                            }
-                            nextSpawnIdx++;
-                        } else {
-                            break;
+                while(nextCircleIdx < pendingNotes.length) {
+                    const note = pendingNotes[nextCircleIdx];
+                    const spawnTime = note.timeMs - note.approachTime;
+                    if(elapsed >= spawnTime) {
+                        if(!note.generated && !note.hit) {
+                            note.generated = true;
+                            if(note.type === 'circle') circles.push(note);
+                            else sliders.push(note);
                         }
-                    }
+                        nextCircleIdx++;
+                    } else break;
                 }
                 
                 const windows = getHitWindows();
@@ -812,54 +699,33 @@
                     if(!c.hit) {
                         const missDelta = elapsed - c.targetTime;
                         if(missDelta > windows.ok + 100) {
-                            c.hit = true;
-                            combo = 0;
-                            misses++;
-                            updateUIStats();
-                            calculateAndUpdateAccuracy();
-                            checkAccuracyAndLives();
+                            c.hit = true; combo = 0; misses++;
+                            updateUIStats(); calculateAndUpdateAccuracy();
                         }
                     }
                 }
-                circles = circles.filter(c => {
-                    if(c.hit) return false;
-                    const nowMs = elapsed;
-                    const windows = getHitWindows();
-                    if(nowMs - c.targetTime > windows.ok + 120) return false;
-                    return true;
-                });
+                circles = circles.filter(c => !c.hit);
             }
             
-            const allNotesProcessed = pendingNotes && nextSpawnIdx >= pendingNotes.length && circles.length === 0;
-            if(allNotesProcessed && gameActive && !gamePausedForRespawn && elapsed > GAME_DURATION_MS + 500) {
-                finishGame();
-            } else if(elapsed > GAME_DURATION_MS + 1500 && gameActive && !gamePausedForRespawn) {
-                finishGame();
-            }
-            
+            const allProcessed = nextCircleIdx >= pendingNotes.length && circles.length === 0 && sliders.length === 0;
+            if(allProcessed && gameActive && elapsed > GAME_DURATION_MS + 500) finishGame();
             drawCanvas(elapsed);
             animationId = requestAnimationFrame(gameUpdate);
         }
         
         animationId = requestAnimationFrame(gameUpdate);
-        updateUIStats();
-        drawCanvas(0);
+        updateUIStats(); drawCanvas(0);
     }
     
     function finishGame() {
         if(!gameActive) return;
-        gameActive = false;
-        gameStarted = false;
+        gameActive = false; gameStarted = false;
         const accuracy = calculateAndUpdateAccuracy();
         document.getElementById('gameStatusMsg').innerHTML = `🏆 CLEAR! Score: ${score} | Acc: ${accuracy.toFixed(1)}% | Max Combo: ${maxCombo} 🎉`;
     }
     
     function handleTap(clientX, clientY) {
-        if(!gameActive || gameLocked || gamePausedForRespawn || !gameStarted) {
-            if(gamePausedForRespawn) document.getElementById('gameStatusMsg').innerHTML = '❌ Answer the question to revive!';
-            else if(gameLocked) document.getElementById('gameStatusMsg').innerHTML = '❌ Answer initial questions first!';
-            return;
-        }
+        if(!gameActive || gameLocked || gamePausedForRespawn || !gameStarted) return;
         
         const rect = canvasElem.getBoundingClientRect();
         const scaleX = canvasElem.width / rect.width;
@@ -871,21 +737,16 @@
         
         const elapsedGame = performance.now() - gameStartTimestamp;
         
+        // Check for circle hits
         let closestCircle = null;
         let minDistance = 80;
-        
         for(let i=0; i<circles.length; i++) {
             const c = circles[i];
-            if(c.hit) continue;
             const dx = c.x - canvasX;
             const dy = c.y - canvasY;
             const dist = Math.hypot(dx, dy);
-            const hitRadius = c.radius * 1.8;
-            if(dist <= hitRadius) {
-                if(!closestCircle || dist < minDistance) {
-                    minDistance = dist;
-                    closestCircle = c;
-                }
+            if(dist <= c.radius * 1.8) {
+                if(!closestCircle || dist < minDistance) { closestCircle = c; minDistance = dist; }
             }
         }
         
@@ -893,166 +754,181 @@
             const timeDiff = Math.abs(elapsedGame - closestCircle.targetTime);
             const windows = getHitWindows();
             let points, judgement, color;
-            
-            if (timeDiff <= windows.perfect) {
-                points = BASE_SCORE;
-                judgement = "PERFECT!";
-                color = "#ffd700";
-            } else if (timeDiff <= windows.good) {
-                points = Math.floor(BASE_SCORE * 0.85);
-                judgement = "GOOD!";
-                color = "#88ff88";
-            } else if (timeDiff <= windows.ok) {
-                points = Math.floor(BASE_SCORE * 0.6);
-                judgement = "OK";
-                color = "#88aaff";
-            } else {
-                points = Math.floor(BASE_SCORE * 0.3);
-                judgement = "HIT";
-                color = "#ffaa88";
-            }
+            if (timeDiff <= windows.perfect) { points = BASE_SCORE; judgement = "PERFECT!"; color = "#ffd700"; }
+            else if (timeDiff <= windows.good) { points = Math.floor(BASE_SCORE * 0.85); judgement = "GOOD!"; color = "#88ff88"; }
+            else if (timeDiff <= windows.ok) { points = Math.floor(BASE_SCORE * 0.6); judgement = "OK"; color = "#88aaff"; }
+            else { points = Math.floor(BASE_SCORE * 0.3); judgement = "HIT"; color = "#ffaa88"; }
             
             let finalAdd = points + Math.floor(combo * 3);
-            score += finalAdd;
-            combo++;
+            score += finalAdd; combo++;
             if(combo > maxCombo) maxCombo = combo;
-            totalHits++;
-            closestCircle.hit = true;
-            
-            updateUIStats();
-            calculateAndUpdateAccuracy();
-            checkAccuracyAndLives();
+            totalHits++; closestCircle.hit = true;
+            updateUIStats(); calculateAndUpdateAccuracy();
             
             const screenX = rect.left + (closestCircle.x / scaleX);
             const screenY = rect.top + (closestCircle.y / scaleY);
             showFloatingJudgement(judgement, screenX, screenY, color);
-            
             window.lastHitEffect = { x: closestCircle.x, y: closestCircle.y, timer: 8 };
-            document.getElementById('gameStatusMsg').innerHTML = judgement;
-            setTimeout(()=>{
-                if(gameActive && !gamePausedForRespawn && gameStarted) document.getElementById('gameStatusMsg').innerHTML = `🎧 Keep tapping!`;
-            }, 200);
-        } else {
-            combo = 0;
-            misses++;
-            updateUIStats();
-            calculateAndUpdateAccuracy();
-            checkAccuracyAndLives();
-            
-            showFloatingJudgement("MISS", clientX, clientY, "#ff6666");
-            document.getElementById('gameStatusMsg').innerHTML = "❌ MISS...";
-            setTimeout(()=>{
-                if(gameActive && !gamePausedForRespawn && gameStarted) document.getElementById('gameStatusMsg').innerHTML = `🎧 Keep tapping!`;
-            }, 200);
+            return;
         }
-        updateUIStats();
+        
+        // Check for slider start
+        for(let i=0; i<sliders.length; i++) {
+            const s = sliders[i];
+            if(s.hit) continue;
+            const timeDiff = Math.abs(elapsedGame - s.timeMs);
+            const windows = getHitWindows();
+            if(timeDiff <= windows.ok && !activeDrag) {
+                const dx = s.startX - canvasX;
+                const dy = s.startY - canvasY;
+                if(Math.hypot(dx, dy) <= s.radius * 1.8) {
+                    activeDrag = s;
+                    dragProgress = 0;
+                    s.hit = true;
+                    showFloatingJudgement("DRAG!", canvasX, canvasY, "#ff88ff");
+                    return;
+                }
+            }
+        }
+        
+        // Miss
+        combo = 0; misses++;
+        updateUIStats(); calculateAndUpdateAccuracy();
+        showFloatingJudgement("MISS", clientX, clientY, "#ff6666");
+    }
+    
+    function handleDrag(clientX, clientY) {
+        if(!activeDrag || !gameActive || gamePausedForRespawn) return;
+        
+        const rect = canvasElem.getBoundingClientRect();
+        const scaleX = canvasElem.width / rect.width;
+        const scaleY = canvasElem.height / rect.height;
+        let canvasX = (clientX - rect.left) * scaleX;
+        let canvasY = (clientY - rect.top) * scaleY;
+        
+        const path = activeDrag.path;
+        let bestProgress = 0;
+        for(let i=0; i<path.length; i++) {
+            const dx = path[i].x - canvasX;
+            const dy = path[i].y - canvasY;
+            if(Math.hypot(dx, dy) <= activeDrag.radius * 1.5) {
+                bestProgress = Math.max(bestProgress, i / (path.length - 1));
+            }
+        }
+        
+        if(bestProgress > dragProgress) {
+            dragProgress = bestProgress;
+            if(dragProgress >= 0.95) {
+                const points = SLIDER_BASE_SCORE + Math.floor(combo * 2);
+                score += points; combo++;
+                if(combo > maxCombo) maxCombo = combo;
+                totalHits++;
+                updateUIStats(); calculateAndUpdateAccuracy();
+                showFloatingJudgement("SLIDER END", canvasX, canvasY, "#ff88ff");
+                activeDrag.completed = true;
+                activeDrag = null;
+                const index = sliders.findIndex(s => s === activeDrag);
+                if(index !== -1) sliders.splice(index, 1);
+            }
+        }
+    }
+    
+    function handleDragEnd() {
+        if(activeDrag && !activeDrag.completed) {
+            combo = 0; misses++;
+            updateUIStats(); calculateAndUpdateAccuracy();
+            showFloatingJudgement("DRAG FAIL", activeDrag.startX, activeDrag.startY, "#ff6666");
+            const index = sliders.findIndex(s => s === activeDrag);
+            if(index !== -1) sliders.splice(index, 1);
+        }
+        activeDrag = null;
+        dragProgress = 0;
     }
     
     function updateUIStats() {
         document.getElementById('scoreValue').innerText = Math.floor(score);
-        const accuracy = calculateAndUpdateAccuracy();
-        document.getElementById('accValue').innerText = accuracy.toFixed(1);
+        calculateAndUpdateAccuracy();
         document.getElementById('comboValue').innerText = combo;
     }
     
     function drawCanvas(nowElapsed = 0) {
         if(!ctx) return;
         ctx.clearRect(0, 0, canvasElem.width, canvasElem.height);
-        
         const grad = ctx.createLinearGradient(0,0,canvasElem.width,canvasElem.height);
-        grad.addColorStop(0, '#141b2b');
-        grad.addColorStop(1, '#0e1322');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0,0,canvasElem.width,canvasElem.height);
+        grad.addColorStop(0, '#141b2b'); grad.addColorStop(1, '#0e1322');
+        ctx.fillStyle = grad; ctx.fillRect(0,0,canvasElem.width,canvasElem.height);
         
-        for(let c of circles) {
-            const timeUntilHit = c.targetTime - nowElapsed;
-            let approachScale;
-            
-            if (timeUntilHit > 0) {
-                const progress = Math.min(1, Math.max(0, 1 - (timeUntilHit / c.approachTime)));
-                approachScale = 1.8 - (progress * 0.8);
-            } else {
-                approachScale = 1.0;
-            }
-            
-            const approachRadius = c.radius * approachScale;
+        // Draw sliders
+        for(let s of sliders) {
+            const timeUntilHit = s.timeMs - nowElapsed;
+            let alpha = Math.min(1, Math.max(0.3, 1 - (timeUntilHit / s.approachTime) * 0.5));
             
             ctx.beginPath();
-            ctx.arc(c.x, c.y, approachRadius, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(255, 200, 255, ${Math.min(1, 1 - (timeUntilHit / c.approachTime) * 0.5)})`;
-            ctx.lineWidth = 4;
+            ctx.moveTo(s.path[0].x, s.path[0].y);
+            for(let i=1; i<s.path.length; i++) ctx.lineTo(s.path[i].x, s.path[i].y);
+            ctx.strokeStyle = `rgba(255, 136, 255, ${alpha})`;
+            ctx.lineWidth = 6;
             ctx.stroke();
             
             ctx.beginPath();
-            ctx.arc(c.x, c.y, c.radius - 2, 0, Math.PI * 2);
-            ctx.fillStyle = "#fe7fb5";
+            ctx.arc(s.startX, s.startY, s.radius, 0, Math.PI*2);
+            ctx.fillStyle = `rgba(255, 100, 200, ${alpha})`;
             ctx.fill();
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = "#ff66aa";
-            
             ctx.beginPath();
-            ctx.arc(c.x, c.y, c.radius - 8, 0, Math.PI * 2);
-            ctx.fillStyle = "#ffffff";
+            ctx.arc(s.endX, s.endY, s.radius-4, 0, Math.PI*2);
+            ctx.fillStyle = `rgba(255, 200, 255, ${alpha})`;
             ctx.fill();
-            
-            ctx.font = `bold ${Math.floor(c.radius * 0.6)}px "Segoe UI"`;
-            ctx.fillStyle = "#2a1a3a";
-            ctx.shadowBlur = 0;
-            ctx.fillText("●", c.x - 7, c.y + 6);
+        }
+        
+        // Draw circles
+        for(let c of circles) {
+            const timeUntilHit = c.targetTime - nowElapsed;
+            let approachScale = (timeUntilHit > 0) ? 1.8 - (Math.min(1, Math.max(0, 1 - (timeUntilHit / c.approachTime))) * 0.8) : 1.0;
+            const approachRadius = c.radius * approachScale;
+            ctx.beginPath(); ctx.arc(c.x, c.y, approachRadius, 0, Math.PI*2);
+            ctx.strokeStyle = "#ffddff"; ctx.lineWidth = 3; ctx.stroke();
+            ctx.beginPath(); ctx.arc(c.x, c.y, c.radius-2, 0, Math.PI*2);
+            ctx.fillStyle = "#fe7fb5"; ctx.fill();
+            ctx.beginPath(); ctx.arc(c.x, c.y, c.radius-8, 0, Math.PI*2);
+            ctx.fillStyle = "#ffffff"; ctx.fill();
         }
         
         if(window.lastHitEffect && window.lastHitEffect.timer > 0) {
-            ctx.beginPath();
-            ctx.arc(window.lastHitEffect.x, window.lastHitEffect.y, 50, 0, Math.PI*2);
-            ctx.fillStyle = "#ffffffcc";
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(window.lastHitEffect.x, window.lastHitEffect.y, 50, 0, Math.PI*2);
+            ctx.fillStyle = "#ffffffcc"; ctx.fill();
             window.lastHitEffect.timer--;
             if(window.lastHitEffect.timer <=0) window.lastHitEffect = null;
         }
         
         if(combo >= 5 && gameStarted && gameActive) {
             ctx.font = `bold 32px "Montserrat"`;
-            ctx.fillStyle = "#ffe6b3";
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = "#ff66aa";
+            ctx.fillStyle = "#ffe6b3"; ctx.shadowBlur = 8; ctx.shadowColor = "#ff66aa";
             ctx.fillText(`${combo}x`, canvasElem.width - 85, 70);
             ctx.shadowBlur = 0;
         }
         
         const elapsed = performance.now() - gameStartTimestamp;
         const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION_MS));
-        ctx.fillStyle = "#ff66aa90";
-        ctx.fillRect(20, canvasElem.height - 25, (canvasElem.width - 40) * prog, 10);
-        ctx.fillStyle = "#ffffff30";
-        ctx.fillRect(20, canvasElem.height - 25, canvasElem.width - 40, 10);
-        ctx.fillStyle = "#ffaaee";
-        ctx.fillRect(20, canvasElem.height - 25, (canvasElem.width - 40) * prog, 10);
+        ctx.fillStyle = "#ff66aa90"; ctx.fillRect(20, canvasElem.height-25, (canvasElem.width-40)*prog, 10);
+        ctx.fillStyle = "#ffffff30"; ctx.fillRect(20, canvasElem.height-25, canvasElem.width-40, 10);
+        ctx.fillStyle = "#ffaaee"; ctx.fillRect(20, canvasElem.height-25, (canvasElem.width-40)*prog, 10);
     }
     
-    function handleTapEvent(e) {
-        e.preventDefault();
-        let clientX, clientY;
-        if (e.touches) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-        handleTap(clientX, clientY);
-    }
+    function handleTouchStart(e) { e.preventDefault(); const touch = e.touches[0]; handleTap(touch.clientX, touch.clientY); }
+    function handleTouchMove(e) { e.preventDefault(); const touch = e.touches[0]; handleDrag(touch.clientX, touch.clientY); }
+    function handleTouchEnd(e) { e.preventDefault(); handleDragEnd(); }
+    function handleMouseMove(e) { if(e.buttons !== 1) return; handleDrag(e.clientX, e.clientY); }
+    function handleMouseUp() { handleDragEnd(); }
     
-    canvasElem.addEventListener('click', handleTapEvent);
-    canvasElem.addEventListener('touchstart', handleTapEvent, { passive: false });
+    canvasElem.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvasElem.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvasElem.addEventListener('touchend', handleTouchEnd);
+    canvasElem.addEventListener('mousedown', (e) => { e.preventDefault(); handleTap(e.clientX, e.clientY); });
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
     
-    document.getElementById('resetGameBtn').addEventListener('click', () => {
-        location.reload();
-    });
-    
-    document.getElementById('restartSameBtn').addEventListener('click', () => {
-        location.reload();
-    });
+    document.getElementById('resetGameBtn').addEventListener('click', () => location.reload());
+    document.getElementById('restartSameBtn').addEventListener('click', () => location.reload());
     
     document.querySelectorAll('.diff-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -1063,28 +939,14 @@
                 document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 updateDifficultyIndicator();
-                
-                // If game is already active, restart with new difficulty
-                if(gameStarted && !gameLocked && !quizActive) {
-                    gameStarted = false;
-                    gameActive = false;
-                    setTimeout(() => {
-                        gameStarted = true;
-                        gameActive = true;
-                        fullReset();
-                    }, 100);
-                }
+                if(gameStarted && !gameLocked && !quizActive) location.reload();
             }
         });
     });
     
-    // Set initial active button
     document.querySelectorAll('.diff-btn').forEach(btn => {
-        if(parseInt(btn.getAttribute('data-diff')) === currentDifficulty) {
-            btn.classList.add('active');
-        }
-        btn.style.pointerEvents = 'none';
-        btn.style.opacity = '0.6';
+        if(parseInt(btn.getAttribute('data-diff')) === currentDifficulty) btn.classList.add('active');
+        btn.style.pointerEvents = 'none'; btn.style.opacity = '0.6';
     });
     updateDifficultyIndicator();
     
@@ -1095,10 +957,8 @@
             const j = Math.floor(Math.random() * (i + 1));
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
-        const initialQuestions = shuffled.slice(0, 3);
-        showInitialQuiz(initialQuestions);
+        showInitialQuiz(shuffled.slice(0, 3));
     }
-    
     init();
 </script>
 </body>
