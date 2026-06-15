@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Working Sliders · Extended Duration</title>
+    <title>osu! · Working Sliders · Guaranteed Drag</title>
     <style>
         * {
             user-select: none;
@@ -361,7 +361,7 @@
         <div id="gameStatusMsg" class="result-message">Answer 3 questions to start</div>
     </div>
     <div class="footer-meta">
-        TAP circles • HOLD & DRAG on sliders (follow the path) • ACCURACY &lt;60% = GAME OVER
+        TAP circles • HOLD & DRAG on sliders (follow the pink line) • ACCURACY &lt;60% = GAME OVER
     </div>
 </div>
 
@@ -382,7 +382,7 @@
     let canvas, ctx;
     let activeCircles = [];
     let activeSliders = [];
-    let draggingSlider = null;
+    let draggingSliderId = null;
     let score = 0, combo = 0, maxCombo = 0, totalHits = 0, misses = 0;
     let gameActive = false, gameStarted = false;
     let currentDifficulty = 1;
@@ -502,8 +502,8 @@
             const startX = margin + Math.random() * (canvasElem.width - margin * 2);
             const startY = margin + Math.random() * (canvasElem.height - margin * 2);
             
-            let endX = startX + (Math.random() - 0.5) * 200;
-            let endY = startY + (Math.random() - 0.5) * 150;
+            let endX = startX + (Math.random() - 0.5) * 250;
+            let endY = startY + (Math.random() - 0.5) * 180;
             endX = Math.min(canvasElem.width - margin, Math.max(margin, endX));
             endY = Math.min(canvasElem.height - margin, Math.max(margin, endY));
             
@@ -551,6 +551,7 @@
                 nextNoteIndex = 0;
                 activeCircles = [];
                 activeSliders = [];
+                draggingSliderId = null;
                 score = 0; combo = 0; maxCombo = 0; totalHits = 0; misses = 0;
                 gameStartTime = performance.now();
                 updateUI();
@@ -656,7 +657,7 @@
             ctx.fill();
             
             // Progress highlight for dragged slider
-            if (draggingSlider && draggingSlider.id === s.id && s.dragProgress > 0) {
+            if (draggingSliderId === s.id && s.dragProgress > 0) {
                 const progressIndex = Math.floor(s.dragProgress * (s.points.length - 1));
                 for (let i = 0; i <= progressIndex; i++) {
                     ctx.beginPath();
@@ -678,20 +679,17 @@
             
             const radius = c.radius * scale;
             
-            // Approach circle
             ctx.beginPath();
             ctx.arc(c.x, c.y, radius, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255, 180, 220, ${Math.min(1, 1 - timeToHit / c.approachTime)})`;
             ctx.lineWidth = 3;
             ctx.stroke();
             
-            // Hit circle
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.radius - 2, 0, Math.PI * 2);
             ctx.fillStyle = "#ff66aa";
             ctx.fill();
             
-            // Center
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.radius - 8, 0, Math.PI * 2);
             ctx.fillStyle = "#ffffff";
@@ -765,16 +763,16 @@
             }
         }
         
-        // Start dragging slider - FIXED!
+        // Start dragging slider - FIXED
         for (let i = 0; i < activeSliders.length; i++) {
             const s = activeSliders[i];
             const dx = s.startX - canvasX;
             const dy = s.startY - canvasY;
-            if (Math.hypot(dx, dy) <= s.radius * 1.5 && draggingSlider === null) {
+            if (Math.hypot(dx, dy) <= s.radius * 1.5 && draggingSliderId === null) {
                 const timeDiff = Math.abs(elapsed - s.time);
                 const scale = difficulties[currentDifficulty].timingWindow;
                 if (timeDiff <= TIMING.ok * scale) {
-                    draggingSlider = s;
+                    draggingSliderId = s.id;
                     s.dragProgress = 0;
                     s.hit = true;
                     showMessage("SLIDER", clientX, clientY, "#ff88ff");
@@ -792,7 +790,14 @@
     
     function handleDrag(clientX, clientY) {
         if (!gameActive || !gameStarted || deathTriggered) return;
-        if (draggingSlider === null) return;
+        if (draggingSliderId === null) return;
+        
+        // Find the slider being dragged
+        const s = activeSliders.find(sl => sl.id === draggingSliderId);
+        if (!s) {
+            draggingSliderId = null;
+            return;
+        }
         
         const rect = canvasElem.getBoundingClientRect();
         const scaleX = canvasElem.width / rect.width;
@@ -800,12 +805,11 @@
         const canvasX = (clientX - rect.left) * scaleX;
         const canvasY = (clientY - rect.top) * scaleY;
         
-        const s = draggingSlider;
         const points = s.points;
         let bestProgress = s.dragProgress;
         
         // Find closest point on path
-        for (let i = Math.floor(bestProgress * (points.length - 1)); i < points.length; i++) {
+        for (let i = 0; i < points.length; i++) {
             const dx = points[i].x - canvasX;
             const dy = points[i].y - canvasY;
             const distToPoint = Math.hypot(dx, dy);
@@ -833,22 +837,23 @@
                 // Remove from active sliders
                 const index = activeSliders.findIndex(sl => sl.id === s.id);
                 if (index !== -1) activeSliders.splice(index, 1);
-                draggingSlider = null;
+                draggingSliderId = null;
             }
         }
     }
     
     function handleDragEnd() {
-        if (draggingSlider !== null) {
-            if (draggingSlider.dragProgress < 0.95) {
+        if (draggingSliderId !== null) {
+            const s = activeSliders.find(sl => sl.id === draggingSliderId);
+            if (s && s.dragProgress < 0.95) {
                 combo = 0;
                 misses++;
                 updateUI();
-                showMessage("SLIDER FAIL", draggingSlider.startX, draggingSlider.startY, "#ff6666");
-                const index = activeSliders.findIndex(s => s.id === draggingSlider.id);
+                showMessage("SLIDER FAIL", s.startX, s.startY, "#ff6666");
+                const index = activeSliders.findIndex(sl => sl.id === draggingSliderId);
                 if (index !== -1) activeSliders.splice(index, 1);
             }
-            draggingSlider = null;
+            draggingSliderId = null;
         }
     }
     
@@ -887,9 +892,7 @@
             questionBank = [
                 { question: "What is the capital of France?", options: ["London", "Berlin", "Paris", "Madrid"], correct: 2 },
                 { question: "What is 2 + 2?", options: ["3", "4", "5", "6"], correct: 1 },
-                { question: "Who painted the Mona Lisa?", options: ["Van Gogh", "Picasso", "Da Vinci", "Rembrandt"], correct: 2 },
-                { question: "Which planet is known as the Red Planet?", options: ["Mars", "Jupiter", "Venus", "Saturn"], correct: 0 },
-                { question: "What is the largest ocean?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 }
+                { question: "Who painted the Mona Lisa?", options: ["Van Gogh", "Picasso", "Da Vinci", "Rembrandt"], correct: 2 }
             ];
         }
     }
