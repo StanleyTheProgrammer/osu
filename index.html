@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>osu! Quiz Challenge · 2 Lives & Questions</title>
+    <title>osu! Rhythm Game · Lives & Respawn Questions</title>
     <style>
         * {
             user-select: none;
@@ -86,23 +86,6 @@
             color: #1e1a2f;
         }
 
-        .quiz-skip {
-            background: #4a3a6a;
-            border: none;
-            padding: 12px 28px;
-            border-radius: 60px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            color: #ccc;
-            margin-top: 15px;
-        }
-
-        .quiz-skip:hover {
-            background: #ff4444;
-            color: white;
-        }
-
         .progress-badge {
             text-align: center;
             font-size: 1.2rem;
@@ -123,6 +106,21 @@
             z-index: 100;
             backdrop-filter: blur(8px);
             border: 1px solid #ff6699;
+        }
+
+        .accuracy-warning {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 16px;
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: 1rem;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+            border: 1px solid #ffaa44;
+            color: #ffaa44;
         }
 
         .game-container {
@@ -249,6 +247,7 @@
 </head>
 <body>
 <div class="lives-display" id="livesDisplay">❤️ LIVES: 2</div>
+<div class="accuracy-warning" id="accuracyWarning">📊 ACC: 100%</div>
 
 <div class="game-container">
     <canvas id="gameCanvas" width="800" height="500"></canvas>
@@ -275,17 +274,17 @@
         <div id="gameStatusMsg" class="result-message">✨ Answer 3 questions to start!</div>
     </div>
     <div class="footer-meta">
-        🎧 2 LIVES • Answer questions correctly • Skip = wrong answer (lose 1 life)
+        🎧 2 LIVES • Accuracy below 50% = lose life • Answer question to revive
     </div>
 </div>
 
 <script>
     // Game configuration
     const difficulties = [
-        { name: "EASY",   noteCount: 32,  spawnWindowMs: 1000, approachRate: 1.1, radius: 34 },
-        { name: "NORMAL", noteCount: 48,  spawnWindowMs: 720,  approachRate: 0.9, radius: 32 },
-        { name: "HARD",   noteCount: 65,  spawnWindowMs: 540,  approachRate: 0.72, radius: 30 },
-        { name: "INSANE", noteCount: 85,  spawnWindowMs: 430,  approachRate: 0.58, radius: 28 }
+        { name: "EASY",   noteCount: 32,  approachRate: 1.1, radius: 34 },
+        { name: "NORMAL", noteCount: 48,  approachRate: 0.9, radius: 32 },
+        { name: "HARD",   noteCount: 65,  approachRate: 0.72, radius: 30 },
+        { name: "INSANE", noteCount: 85,  approachRate: 0.58, radius: 28 }
     ];
     
     const HIT_WINDOW_GOOD = 75;
@@ -306,10 +305,13 @@
     
     // Lives & Quiz system
     let lives = 2;
+    let gamePausedForRespawn = false;
+    let respawnCallback = null;
     let currentQuestions = [];
     let currentQuestionIndex = 0;
     let quizActive = true;
     let gameLocked = true;
+    let lastAccuracyCheck = 0;
     
     const canvasElem = document.getElementById('gameCanvas');
     ctx = canvasElem.getContext('2d');
@@ -323,25 +325,25 @@
             return data.questions || data;
         } catch (error) {
             console.error('Error loading questions:', error);
-            // Fallback questions if JSON not found
+            // Fallback questions
             return [
                 { question: "What is the capital of France?", options: ["London", "Berlin", "Paris", "Madrid"], correct: 2 },
                 { question: "Which planet is known as the Red Planet?", options: ["Mars", "Jupiter", "Venus", "Saturn"], correct: 0 },
                 { question: "What is 2 + 2?", options: ["3", "4", "5", "6"], correct: 1 },
                 { question: "Who painted the Mona Lisa?", options: ["Van Gogh", "Picasso", "Da Vinci", "Rembrandt"], correct: 2 },
-                { question: "What is the largest ocean on Earth?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 }
+                { question: "What is the largest ocean?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 }
             ];
         }
     }
     
-    // Show quiz modal
-    function showQuiz(questions) {
+    // Show initial quiz (infinite chances)
+    function showInitialQuiz(questions) {
         const overlay = document.createElement('div');
         overlay.className = 'quiz-overlay';
         overlay.id = 'quizOverlay';
         
         function updateQuizDisplay() {
-            if (currentQuestionIndex >= questions.length || !gameLocked) {
+            if (currentQuestionIndex >= questions.length) {
                 overlay.remove();
                 startGameAfterQuiz();
                 return;
@@ -350,84 +352,139 @@
             const q = questions[currentQuestionIndex];
             overlay.innerHTML = `
                 <div class="quiz-container">
-                    <div class="progress-badge">📚 QUESTION ${currentQuestionIndex + 1}/${questions.length} • ❤️ ${lives} lives left</div>
+                    <div class="progress-badge">📚 QUALIFICATION • QUESTION ${currentQuestionIndex + 1}/${questions.length}</div>
+                    <div class="progress-badge" style="color:#88ff88">✨ Infinite attempts • Keep trying!</div>
                     <div class="quiz-question">${q.question}</div>
                     <div class="quiz-options">
                         ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${opt}</div>`).join('')}
                     </div>
-                    <button class="quiz-skip" id="skipBtn">⏭️ SKIP (Wrong Answer)</button>
                 </div>
             `;
             
-            // Add event listeners
             document.querySelectorAll('.quiz-opt').forEach(btn => {
-                btn.addEventListener('click', () => handleAnswer(parseInt(btn.dataset.opt), q.correct));
+                btn.addEventListener('click', () => {
+                    const selected = parseInt(btn.dataset.opt);
+                    if (selected === q.correct) {
+                        currentQuestionIndex++;
+                        updateQuizDisplay();
+                    } else {
+                        // Wrong answer - just show error, infinite chances
+                        const msg = document.createElement('div');
+                        msg.style.color = '#ff8888';
+                        msg.style.textAlign = 'center';
+                        msg.style.marginTop = '15px';
+                        msg.innerText = '❌ Wrong answer! Try again (infinite attempts)';
+                        overlay.querySelector('.quiz-container').appendChild(msg);
+                        setTimeout(() => msg.remove(), 1500);
+                    }
+                });
             });
-            document.getElementById('skipBtn').addEventListener('click', () => handleSkip());
-        }
-        
-        function handleAnswer(selected, correct) {
-            if (selected === correct) {
-                // Correct answer: keep lives, move to next question
-                currentQuestionIndex++;
-                updateQuizDisplay();
-            } else {
-                // Wrong answer: lose a life
-                lives--;
-                document.getElementById('livesDisplay').innerHTML = `❤️ LIVES: ${lives}`;
-                if (lives <= 0) {
-                    // Game over - no lives left
-                    alert('❌ GAME OVER! No lives remaining. Refresh to try again.');
-                    overlay.innerHTML = `
-                        <div class="quiz-container">
-                            <div class="quiz-question" style="color:#ff6666">💀 GAME OVER 💀</div>
-                            <div class="progress-badge">You ran out of lives! Refresh the page to play again.</div>
-                        </div>
-                    `;
-                    gameLocked = true;
-                    gameActive = false;
-                    return;
-                }
-                currentQuestionIndex++;
-                updateQuizDisplay();
-            }
-        }
-        
-        function handleSkip() {
-            // Skip = wrong answer, lose a life
-            lives--;
-            document.getElementById('livesDisplay').innerHTML = `❤️ LIVES: ${lives}`;
-            if (lives <= 0) {
-                alert('❌ GAME OVER! No lives remaining. Refresh to try again.');
-                overlay.innerHTML = `
-                    <div class="quiz-container">
-                        <div class="quiz-question" style="color:#ff6666">💀 GAME OVER 💀</div>
-                        <div class="progress-badge">You ran out of lives! Refresh the page to play again.</div>
-                    </div>
-                `;
-                gameLocked = true;
-                gameActive = false;
-                return;
-            }
-            currentQuestionIndex++;
-            updateQuizDisplay();
         }
         
         document.body.appendChild(overlay);
         updateQuizDisplay();
     }
     
-    function startGameAfterQuiz() {
-        if (lives <= 0) {
-            document.getElementById('gameStatusMsg').innerHTML = '💀 GAME OVER - No lives left 💀';
-            gameLocked = true;
-            return;
-        }
+    // Show respawn quiz (one chance to revive)
+    function showRespawnQuiz(questions, onComplete) {
+        const overlay = document.createElement('div');
+        overlay.className = 'quiz-overlay';
+        overlay.id = 'quizOverlay';
         
+        // Pick a random question
+        const randomIndex = Math.floor(Math.random() * questions.length);
+        const q = questions[randomIndex];
+        
+        overlay.innerHTML = `
+            <div class="quiz-container">
+                <div class="progress-badge" style="color:#ffaa66">⚠️ RESPAWN CHANCE ⚠️</div>
+                <div class="progress-badge">Answer correctly to revive! (1 life)</div>
+                <div class="quiz-question">${q.question}</div>
+                <div class="quiz-options">
+                    ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${opt}</div>`).join('')}
+                </div>
+            </div>
+        `;
+        
+        document.querySelectorAll('.quiz-opt').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const selected = parseInt(btn.dataset.opt);
+                if (selected === q.correct) {
+                    overlay.remove();
+                    onComplete(true);
+                } else {
+                    overlay.remove();
+                    onComplete(false);
+                }
+            });
+        });
+        
+        document.body.appendChild(overlay);
+    }
+    
+    function startGameAfterQuiz() {
         quizActive = false;
         gameLocked = false;
-        document.getElementById('gameStatusMsg').innerHTML = '🎮 Game starting! Tap circles!';
+        gameActive = true;
+        document.getElementById('gameStatusMsg').innerHTML = '🎮 Game started! Tap circles!';
         fullReset(true);
+    }
+    
+    // Check accuracy and deduct lives if below 50%
+    function checkAccuracyAndLives() {
+        if (!gameActive || gameLocked || gamePausedForRespawn) return;
+        
+        const accuracy = totalHits > 0 ? (successfulHits / totalHits) * 100 : 100;
+        document.getElementById('accuracyWarning').innerHTML = `📊 ACC: ${accuracy.toFixed(1)}%`;
+        
+        if (accuracy < 50 && lives > 0 && !gamePausedForRespawn) {
+            // Lose one life
+            lives--;
+            updateLivesDisplay();
+            document.getElementById('gameStatusMsg').innerHTML = `⚠️ Accuracy below 50%! Lost 1 life (${lives} left)`;
+            
+            if (lives > 0) {
+                // Has respawn chance - pause game and ask question
+                gameActive = false;
+                gamePausedForRespawn = true;
+                
+                loadQuestions().then(questions => {
+                    showRespawnQuiz(questions, (success) => {
+                        if (success) {
+                            // Revive successful
+                            lives++;
+                            updateLivesDisplay();
+                            gameActive = true;
+                            gamePausedForRespawn = false;
+                            document.getElementById('gameStatusMsg').innerHTML = '✨ Revived! Keep playing!';
+                            // Reset accuracy tracking? No, keep stats but give second chance
+                            setTimeout(() => {
+                                if(gameActive) document.getElementById('gameStatusMsg').innerHTML = '🎧 Keep tapping!';
+                            }, 2000);
+                        } else {
+                            // Failed to revive - game over
+                            gameActive = false;
+                            gameLocked = true;
+                            document.getElementById('gameStatusMsg').innerHTML = '💀 GAME OVER - Failed to revive! 💀';
+                            document.getElementById('livesDisplay').innerHTML = `❤️ LIVES: 0`;
+                        }
+                    });
+                });
+            } else {
+                // No lives left - game over
+                gameActive = false;
+                gameLocked = true;
+                document.getElementById('gameStatusMsg').innerHTML = '💀 GAME OVER - No lives remaining! 💀';
+            }
+        }
+    }
+    
+    function updateLivesDisplay() {
+        document.getElementById('livesDisplay').innerHTML = `❤️ LIVES: ${lives}`;
+        if (lives <= 0) {
+            document.getElementById('livesDisplay').style.borderColor = '#ff0000';
+            document.getElementById('livesDisplay').style.color = '#ff6666';
+        }
     }
     
     // Generate beatmap
@@ -466,6 +523,7 @@
         if(animationId) cancelAnimationFrame(animationId);
         
         gameActive = true;
+        gamePausedForRespawn = false;
         circles = [];
         score = 0;
         combo = 0;
@@ -494,7 +552,7 @@
         gameStartTimestamp = performance.now();
         
         function gameUpdate() {
-            if(!gameActive && circles.length === 0) {
+            if((!gameActive || gamePausedForRespawn) && circles.length === 0 && !gamePausedForRespawn) {
                 drawCanvas();
                 animationId = requestAnimationFrame(gameUpdate);
                 return;
@@ -503,58 +561,62 @@
             const now = performance.now();
             const elapsed = now - gameStartTimestamp;
             
-            // Spawn notes
-            if(pendingNotes && nextSpawnIdx < pendingNotes.length) {
-                const approachLead = difficulties[currentDifficulty].approachRate * 420;
-                while(nextSpawnIdx < pendingNotes.length) {
-                    const note = pendingNotes[nextSpawnIdx];
-                    const spawnTime = note.timeMs - approachLead;
-                    if(elapsed >= spawnTime) {
-                        if(!note.generated && !note.hit) {
-                            note.generated = true;
-                            circles.push({
-                                id: note.id,
-                                x: note.x,
-                                y: note.y,
-                                radius: note.radius,
-                                targetTime: note.timeMs,
-                                hit: false,
-                                approachRate: difficulties[currentDifficulty].approachRate,
-                                radiusBase: note.radius
-                            });
+            // Only spawn and process if game is active and not paused
+            if(gameActive && !gamePausedForRespawn) {
+                // Spawn notes
+                if(pendingNotes && nextSpawnIdx < pendingNotes.length) {
+                    const approachLead = difficulties[currentDifficulty].approachRate * 420;
+                    while(nextSpawnIdx < pendingNotes.length) {
+                        const note = pendingNotes[nextSpawnIdx];
+                        const spawnTime = note.timeMs - approachLead;
+                        if(elapsed >= spawnTime) {
+                            if(!note.generated && !note.hit) {
+                                note.generated = true;
+                                circles.push({
+                                    id: note.id,
+                                    x: note.x,
+                                    y: note.y,
+                                    radius: note.radius,
+                                    targetTime: note.timeMs,
+                                    hit: false,
+                                    approachRate: difficulties[currentDifficulty].approachRate,
+                                    radiusBase: note.radius
+                                });
+                            }
+                            nextSpawnIdx++;
+                        } else {
+                            break;
                         }
-                        nextSpawnIdx++;
-                    } else {
-                        break;
                     }
                 }
-            }
-            
-            // Check misses
-            for(let i=0; i<circles.length; i++) {
-                const c = circles[i];
-                if(!c.hit) {
-                    const missDelta = elapsed - c.targetTime;
-                    if(missDelta > HIT_WINDOW_BAD + 45) {
-                        c.hit = true;
-                        combo = 0;
-                        totalHits++;
-                        updateUIStats();
+                
+                // Check misses
+                for(let i=0; i<circles.length; i++) {
+                    const c = circles[i];
+                    if(!c.hit) {
+                        const missDelta = elapsed - c.targetTime;
+                        if(missDelta > HIT_WINDOW_BAD + 45) {
+                            c.hit = true;
+                            combo = 0;
+                            totalHits++;
+                            updateUIStats();
+                            checkAccuracyAndLives();
+                        }
                     }
                 }
+                circles = circles.filter(c => {
+                    if(c.hit) return false;
+                    const nowMs = elapsed;
+                    if(nowMs - c.targetTime > HIT_WINDOW_BAD + 70) return false;
+                    return true;
+                });
             }
-            circles = circles.filter(c => {
-                if(c.hit) return false;
-                const nowMs = elapsed;
-                if(nowMs - c.targetTime > HIT_WINDOW_BAD + 70) return false;
-                return true;
-            });
             
             // Check game end
             const allNotesProcessed = pendingNotes && nextSpawnIdx >= pendingNotes.length && circles.length === 0;
-            if(allNotesProcessed && gameActive && elapsed > GAME_DURATION_MS + 400) {
+            if(allNotesProcessed && gameActive && !gamePausedForRespawn && elapsed > GAME_DURATION_MS + 400) {
                 finishGame();
-            } else if(elapsed > GAME_DURATION_MS + 1000 && gameActive) {
+            } else if(elapsed > GAME_DURATION_MS + 1000 && gameActive && !gamePausedForRespawn) {
                 finishGame();
             }
             
@@ -575,8 +637,9 @@
     }
     
     function handleTap(clientX, clientY) {
-        if(!gameActive || gameLocked) {
-            document.getElementById('gameStatusMsg').innerHTML = gameLocked ? '❌ Answer questions first!' : '⏸️ Game finished';
+        if(!gameActive || gameLocked || gamePausedForRespawn) {
+            if(gamePausedForRespawn) document.getElementById('gameStatusMsg').innerHTML = '❌ Answer the question to revive!';
+            else if(gameLocked) document.getElementById('gameStatusMsg').innerHTML = '❌ Answer initial questions first!';
             return;
         }
         
@@ -624,18 +687,20 @@
             totalHits++;
             closestCircle.hit = true;
             updateUIStats();
+            checkAccuracyAndLives();
             window.lastHitEffect = { x: closestCircle.x, y: closestCircle.y, timer: 8 };
             document.getElementById('gameStatusMsg').innerHTML = isPerfect ? "🔥 PERFECT!" : "👍 GOOD!";
             setTimeout(()=>{
-                if(gameActive) document.getElementById('gameStatusMsg').innerHTML = `🎧 keep tapping!`;
+                if(gameActive && !gamePausedForRespawn) document.getElementById('gameStatusMsg').innerHTML = `🎧 keep tapping!`;
             }, 220);
         } else {
             combo = 0;
             totalHits++;
             updateUIStats();
+            checkAccuracyAndLives();
             document.getElementById('gameStatusMsg').innerHTML = "❌ MISS...";
             setTimeout(()=>{
-                if(gameActive) document.getElementById('gameStatusMsg').innerHTML = `🎧 keep tapping!`;
+                if(gameActive && !gamePausedForRespawn) document.getElementById('gameStatusMsg').innerHTML = `🎧 keep tapping!`;
             }, 220);
         }
         updateUIStats();
@@ -720,15 +785,23 @@
     });
     
     document.getElementById('resetGameBtn').addEventListener('click', () => {
-        if(gameLocked && !quizActive) return;
         if(animationId) cancelAnimationFrame(animationId);
-        fullReset(true);
+        lives = 2;
+        gamePausedForRespawn = false;
+        updateLivesDisplay();
+        // Restart with initial quiz
+        location.reload();
     });
     
     document.getElementById('restartSameBtn').addEventListener('click', () => {
         if(gameLocked && !quizActive) return;
         if(animationId) cancelAnimationFrame(animationId);
-        fullReset(true);
+        if(!gameLocked && !quizActive) {
+            lives = 2;
+            gamePausedForRespawn = false;
+            updateLivesDisplay();
+            fullReset(true);
+        }
     });
     
     document.querySelectorAll('.diff-btn').forEach(btn => {
@@ -742,7 +815,7 @@
                 currentDifficulty = newDiff;
                 document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                if(gameActive && !gameLocked) fullReset(true);
+                if(gameActive && !gameLocked && !quizActive) fullReset(true);
             }
         });
     });
@@ -750,14 +823,14 @@
     // Initialize game with quiz
     async function init() {
         const questions = await loadQuestions();
-        // Select 3 random questions
+        // Select 3 random questions for initial quiz
         const shuffled = [...questions];
         for(let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
         currentQuestions = shuffled.slice(0, 3);
-        showQuiz(currentQuestions);
+        showInitialQuiz(currentQuestions);
     }
     
     init();
