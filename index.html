@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! Style Rhythm Game · Proper Approach Circles</title>
+    <title>osu! Style Rhythm Game · Fixed Revive System</title>
     <style>
         * {
             user-select: none;
@@ -79,7 +79,6 @@
             transition: 0.2s;
             text-align: center;
             font-size: 1rem;
-            -webkit-tap-highlight-color: transparent;
         }
 
         .quiz-opt:active {
@@ -202,7 +201,6 @@
             color: #cbd5ff;
             cursor: pointer;
             transition: 0.2s ease;
-            -webkit-tap-highlight-color: transparent;
         }
 
         .diff-btn.active {
@@ -233,7 +231,6 @@
             color: #eff3ff;
             cursor: pointer;
             transition: 0.15s linear;
-            -webkit-tap-highlight-color: transparent;
         }
 
         button:active {
@@ -297,7 +294,7 @@
         <div id="gameStatusMsg" class="result-message">✨ Answer 3 questions to start!</div>
     </div>
     <div class="footer-meta">
-        🎧 Tap when the shrinking circle matches the inner circle! • Accuracy &lt;50% = lose life
+        🎧 Tap when shrinking circle matches pink circle! • Accuracy &lt;50% = lose life
     </div>
 </div>
 
@@ -314,7 +311,6 @@
     const HIT_WINDOW_BAD = 160;
     const BASE_SCORE = 250;
     const GAME_DURATION_MS = 32000;
-    const START_DELAY_MS = 1800;
     
     let canvas, ctx;
     let circles = [];
@@ -335,6 +331,7 @@
     let questionBank = [];
     let quizActive = true;
     let gameLocked = true;
+    let alreadyLostLife = false; // PREVENTS MULTIPLE TRIGGERS
     
     const canvasElem = document.getElementById('gameCanvas');
     ctx = canvasElem.getContext('2d');
@@ -494,38 +491,48 @@
                 document.getElementById('gameStatusMsg').innerHTML = '🎵 GO! Tap when circles shrink!';
                 gameStarted = true;
                 gameActive = true;
+                alreadyLostLife = false; // Reset life loss flag
                 fullReset();
             }
         }, 1000);
     }
     
     function checkAccuracyAndLives() {
-        if (!gameActive || gameLocked || gamePausedForRespawn || !gameStarted) return;
+        // Don't check if game is paused, not active, or already processing a life loss
+        if (!gameActive || gameLocked || gamePausedForRespawn || !gameStarted || alreadyLostLife) return;
         
         const accuracy = totalHits > 0 ? (successfulHits / totalHits) * 100 : 100;
         document.getElementById('accuracyWarning').innerHTML = `📊 ACC: ${accuracy.toFixed(1)}%`;
         document.getElementById('accValue').innerText = accuracy.toFixed(1);
         
+        // Only trigger if accuracy < 50%, have lives, and at least 10 hits (so not at start)
         if (accuracy < 50 && lives > 0 && !gamePausedForRespawn && gameStarted && totalHits > 10) {
+            alreadyLostLife = true; // PREVENT MULTIPLE TRIGGERS
+            
             lives--;
             updateLivesDisplay();
             document.getElementById('gameStatusMsg').innerHTML = `⚠️ Accuracy below 50%! Lost 1 life (${lives} left)`;
             
-            if (lives > 0) {
+            if (lives >= 0) {
+                // Pause game
                 gameActive = false;
                 gamePausedForRespawn = true;
                 
                 showRespawnQuiz((success) => {
                     gamePausedForRespawn = false;
+                    
                     if (success) {
+                        // Revive successful
                         lives++;
                         updateLivesDisplay();
                         gameActive = true;
+                        alreadyLostLife = false; // Reset flag for next potential loss
                         document.getElementById('gameStatusMsg').innerHTML = '✨ Revived! Keep playing!';
                         setTimeout(() => {
                             if(gameActive && gameStarted) document.getElementById('gameStatusMsg').innerHTML = '🎧 Keep tapping!';
                         }, 2000);
                     } else {
+                        // Failed revive - game over
                         gameActive = false;
                         gameLocked = true;
                         gameStarted = false;
@@ -547,6 +554,9 @@
         if (lives <= 0) {
             document.getElementById('livesDisplay').style.borderColor = '#ff0000';
             document.getElementById('livesDisplay').style.color = '#ff6666';
+        } else {
+            document.getElementById('livesDisplay').style.borderColor = '#ff6699';
+            document.getElementById('livesDisplay').style.color = 'white';
         }
     }
     
@@ -623,8 +633,8 @@
                 return;
             }
             
-            if((!gameActive || gamePausedForRespawn) && !gamePausedForRespawn) {
-                drawCanvas(0);
+            if((!gameActive || gamePausedForRespawn)) {
+                drawCanvas(performance.now() - gameStartTimestamp);
                 animationId = requestAnimationFrame(gameUpdate);
                 return;
             }
@@ -799,23 +809,22 @@
             let approachScale;
             
             if (timeUntilHit > 0) {
-                // Circle starts large (scale 1.8) and shrinks to normal size (scale 1.0)
                 const progress = Math.min(1, Math.max(0, 1 - (timeUntilHit / c.approachTime)));
-                approachScale = 1.8 - (progress * 0.8); // 1.8 → 1.0
+                approachScale = 1.8 - (progress * 0.8);
             } else {
-                approachScale = 1.0; // Hit time passed, show normal size
+                approachScale = 1.0;
             }
             
             const approachRadius = c.radius * approachScale;
             
-            // Draw approach ring (outer shrinking circle)
+            // Draw approach ring
             ctx.beginPath();
             ctx.arc(c.x, c.y, approachRadius, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255, 200, 255, ${Math.min(1, 1 - (timeUntilHit / c.approachTime) * 0.5)})`;
             ctx.lineWidth = 4;
             ctx.stroke();
             
-            // Draw inner circle (hit circle)
+            // Draw inner circle
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.radius - 2, 0, Math.PI * 2);
             ctx.fillStyle = "#fe7fb5";
@@ -829,7 +838,6 @@
             ctx.fillStyle = "#ffffff";
             ctx.fill();
             
-            // Draw hit number
             ctx.font = `bold ${Math.floor(c.radius * 0.6)}px "Segoe UI"`;
             ctx.fillStyle = "#2a1a3a";
             ctx.shadowBlur = 0;
@@ -907,6 +915,7 @@
             lives = 2;
             gamePausedForRespawn = false;
             gameStarted = false;
+            alreadyLostLife = false;
             updateLivesDisplay();
             startCountdown();
         }
@@ -925,6 +934,7 @@
                 if(gameActive && gameStarted && !gameLocked && !quizActive) {
                     if(animationId) cancelAnimationFrame(animationId);
                     gameStarted = false;
+                    alreadyLostLife = false;
                     setTimeout(() => startCountdown(), 300);
                 }
             }
