@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>osu! Rhythm Game · Lives & Respawn Questions</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>osu! Rhythm Game · iPad Friendly</title>
     <style>
         * {
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
         body {
@@ -16,9 +17,10 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: 'Segoe UI', 'Poppins', 'Inter', system-ui, sans-serif;
+            font-family: 'Segoe UI', 'Poppins', 'Inter', system-ui, -apple-system, sans-serif;
             margin: 0;
             padding: 20px;
+            touch-action: pan-x pan-y; /* Allow scrolling but not zoom */
         }
 
         /* Quiz Modal */
@@ -34,12 +36,13 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            touch-action: none;
         }
 
         .quiz-container {
             background: linear-gradient(135deg, #1e1b2e, #141121);
             border-radius: 48px;
-            padding: 40px;
+            padding: 30px 25px;
             max-width: 550px;
             width: 90%;
             border: 2px solid #ff88cc;
@@ -53,18 +56,19 @@
         }
 
         .quiz-question {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             font-weight: 800;
             color: #ffd966;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             text-align: center;
+            word-wrap: break-word;
         }
 
         .quiz-options {
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            margin-bottom: 25px;
+            gap: 12px;
+            margin-bottom: 20px;
         }
 
         .quiz-opt {
@@ -77,57 +81,59 @@
             cursor: pointer;
             transition: 0.2s;
             text-align: center;
+            font-size: 1rem;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .quiz-opt:hover {
+        .quiz-opt:active {
             background: #ff66aa;
-            border-color: #ffffff;
-            transform: scale(1.02);
-            color: #1e1a2f;
+            transform: scale(0.98);
         }
 
         .progress-badge {
             text-align: center;
-            font-size: 1.2rem;
-            margin-bottom: 20px;
+            font-size: 1rem;
+            margin-bottom: 15px;
             color: #ffaa88;
             font-weight: bold;
         }
 
         .lives-display {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.7);
-            padding: 10px 20px;
+            top: 15px;
+            right: 15px;
+            background: rgba(0,0,0,0.8);
+            padding: 8px 16px;
             border-radius: 60px;
             font-weight: bold;
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             z-index: 100;
             backdrop-filter: blur(8px);
             border: 1px solid #ff6699;
+            pointer-events: none;
         }
 
         .accuracy-warning {
             position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(0,0,0,0.7);
+            top: 15px;
+            left: 15px;
+            background: rgba(0,0,0,0.8);
             padding: 8px 16px;
             border-radius: 60px;
             font-weight: bold;
-            font-size: 1rem;
+            font-size: 0.9rem;
             z-index: 100;
             backdrop-filter: blur(8px);
             border: 1px solid #ffaa44;
             color: #ffaa44;
+            pointer-events: none;
         }
 
         .game-container {
             background: rgba(10, 14, 23, 0.65);
             backdrop-filter: blur(4px);
-            border-radius: 64px;
-            padding: 24px 24px 30px 24px;
+            border-radius: 48px;
+            padding: 20px;
             box-shadow: 0 25px 40px rgba(0,0,0,0.5);
             border: 1px solid rgba(255,255,255,0.15);
         }
@@ -135,52 +141,57 @@
         canvas {
             display: block;
             margin: 0 auto;
-            border-radius: 40px;
+            border-radius: 32px;
             box-shadow: 0 20px 35px rgba(0,0,0,0.5);
             cursor: pointer;
             background: #11161f;
+            width: 100%;
+            height: auto;
+            touch-action: none;
         }
 
         .info-panel {
             display: flex;
             justify-content: space-between;
-            align-items: baseline;
-            gap: 25px;
-            margin: 18px 25px 10px 25px;
+            align-items: center;
+            gap: 15px;
+            margin: 15px 15px 10px 15px;
             flex-wrap: wrap;
         }
 
         .stats {
             display: flex;
-            gap: 28px;
+            gap: 20px;
             background: rgba(0,0,0,0.6);
-            padding: 8px 20px;
+            padding: 6px 16px;
             border-radius: 60px;
         }
 
         .stat {
             font-weight: 700;
+            font-size: 0.9rem;
         }
 
         .stat span:first-child {
             color: #aab3cf;
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            margin-right: 8px;
+            margin-right: 6px;
         }
 
         .stat span:last-child {
             color: #f3e9c0;
-            font-size: 1.7rem;
+            font-size: 1.3rem;
             font-weight: 800;
         }
 
         .difficulty-bar {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             background: rgba(0,0,0,0.5);
-            padding: 6px 18px;
+            padding: 5px 12px;
             border-radius: 60px;
+            flex-wrap: wrap;
         }
 
         .diff-btn {
@@ -188,12 +199,13 @@
             border: none;
             font-family: inherit;
             font-weight: bold;
-            font-size: 1rem;
-            padding: 6px 18px;
+            font-size: 0.85rem;
+            padding: 5px 14px;
             border-radius: 40px;
             color: #cbd5ff;
             cursor: pointer;
             transition: 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .diff-btn.active {
@@ -202,10 +214,14 @@
             box-shadow: 0 0 12px #ff66aa80;
         }
 
+        .diff-btn:active {
+            transform: scale(0.95);
+        }
+
         .action-area {
             display: flex;
             justify-content: center;
-            gap: 18px;
+            gap: 12px;
             margin-top: 12px;
         }
 
@@ -214,12 +230,13 @@
             border: none;
             font-family: inherit;
             font-weight: bold;
-            font-size: 1rem;
-            padding: 8px 28px;
+            font-size: 0.9rem;
+            padding: 8px 20px;
             border-radius: 60px;
             color: #eff3ff;
             cursor: pointer;
             transition: 0.15s linear;
+            -webkit-tap-highlight-color: transparent;
         }
 
         button:active {
@@ -231,17 +248,26 @@
             margin-top: 12px;
             font-weight: 700;
             background: #00000066;
-            padding: 5px 15px;
+            padding: 5px 12px;
             border-radius: 40px;
             display: inline-block;
             width: auto;
+            font-size: 0.85rem;
         }
 
         .footer-meta {
             text-align: center;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: #7f8aa8;
             margin-top: 12px;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .stat span:last-child { font-size: 1.1rem; }
+            .diff-btn { font-size: 0.75rem; padding: 4px 10px; }
+            .quiz-question { font-size: 1.2rem; }
+            .quiz-opt { padding: 12px 16px; font-size: 0.9rem; }
         }
     </style>
 </head>
@@ -250,12 +276,12 @@
 <div class="accuracy-warning" id="accuracyWarning">📊 ACC: 100%</div>
 
 <div class="game-container">
-    <canvas id="gameCanvas" width="800" height="500"></canvas>
+    <canvas id="gameCanvas" width="800" height="500" style="width:100%; height:auto; max-width:800px; aspect-ratio:800/500"></canvas>
     
     <div class="info-panel">
         <div class="stats">
             <div class="stat"><span>🎯 SCORE</span><span id="scoreValue">0</span></div>
-            <div class="stat"><span>💯 ACC</span><span id="accValue">100</span><span style="font-size:1rem">%</span></div>
+            <div class="stat"><span>💯 ACC</span><span id="accValue">100</span><span style="font-size:0.8rem">%</span></div>
             <div class="stat"><span>⭐ COMBO</span><span id="comboValue">0</span></div>
         </div>
         <div class="difficulty-bar" id="difficultySelector">
@@ -274,47 +300,59 @@
         <div id="gameStatusMsg" class="result-message">✨ Answer 3 questions to start!</div>
     </div>
     <div class="footer-meta">
-        🎧 2 LIVES • Accuracy below 50% = lose life • Answer question to revive
+        🎧 Tap circles • Accuracy &lt;50% = lose life • Answer question to revive
     </div>
 </div>
 
 <script>
-    // Game configuration
+    // Game configuration - SLOWER start for reaction time
     const difficulties = [
-        { name: "EASY",   noteCount: 32,  approachRate: 1.1, radius: 34 },
-        { name: "NORMAL", noteCount: 48,  approachRate: 0.9, radius: 32 },
-        { name: "HARD",   noteCount: 65,  approachRate: 0.72, radius: 30 },
-        { name: "INSANE", noteCount: 85,  approachRate: 0.58, radius: 28 }
+        { name: "EASY",   noteCount: 30,  approachRate: 1.3, radius: 38, speed: 0.7 },
+        { name: "NORMAL", noteCount: 40,  approachRate: 1.1, radius: 35, speed: 0.85 },
+        { name: "HARD",   noteCount: 55,  approachRate: 0.95, radius: 32, speed: 1.0 },
+        { name: "INSANE", noteCount: 70,  approachRate: 0.8, radius: 30, speed: 1.15 }
     ];
     
-    const HIT_WINDOW_GOOD = 75;
-    const HIT_WINDOW_BAD = 150;
+    const HIT_WINDOW_GOOD = 100;   // More forgiving
+    const HIT_WINDOW_BAD = 200;
     const BASE_SCORE = 250;
-    const GAME_DURATION_MS = 30500;
+    const GAME_DURATION_MS = 32000;
+    const START_DELAY_MS = 1500;   // 1.5 seconds to prepare!
     
     let canvas, ctx;
     let circles = [];
     let score = 0, combo = 0, maxCombo = 0, totalHits = 0, successfulHits = 0;
     let gameActive = false;
-    let currentDifficulty = 1;
+    let currentDifficulty = 0;  // Start with EASY for better experience
     let gameStartTimestamp = 0;
     let animationId = null;
     let beatTimestamps = [];
     let pendingNotes = [];
     let nextSpawnIdx = 0;
+    let gameStarted = false;  // Track if countdown finished
     
     // Lives & Quiz system
     let lives = 2;
     let gamePausedForRespawn = false;
-    let respawnCallback = null;
-    let currentQuestions = [];
-    let currentQuestionIndex = 0;
+    let respawnOverlay = null;
+    let questionBank = [];
+    
+    // Quiz state
     let quizActive = true;
     let gameLocked = true;
-    let lastAccuracyCheck = 0;
     
     const canvasElem = document.getElementById('gameCanvas');
     ctx = canvasElem.getContext('2d');
+    
+    // Set canvas size properly
+    function resizeCanvas() {
+        const container = canvasElem.parentElement;
+        const maxWidth = Math.min(800, window.innerWidth - 40);
+        canvasElem.style.width = `${maxWidth}px`;
+        canvasElem.style.height = 'auto';
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
     
     // Load questions from JSON
     async function loadQuestions() {
@@ -322,53 +360,62 @@
             const response = await fetch('questions.json');
             if (!response.ok) throw new Error('Failed to load questions.json');
             const data = await response.json();
-            return data.questions || data;
+            questionBank = data.questions || data;
+            return questionBank;
         } catch (error) {
             console.error('Error loading questions:', error);
-            // Fallback questions
-            return [
+            questionBank = [
                 { question: "What is the capital of France?", options: ["London", "Berlin", "Paris", "Madrid"], correct: 2 },
                 { question: "Which planet is known as the Red Planet?", options: ["Mars", "Jupiter", "Venus", "Saturn"], correct: 0 },
                 { question: "What is 2 + 2?", options: ["3", "4", "5", "6"], correct: 1 },
                 { question: "Who painted the Mona Lisa?", options: ["Van Gogh", "Picasso", "Da Vinci", "Rembrandt"], correct: 2 },
-                { question: "What is the largest ocean?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 }
+                { question: "What is the largest ocean?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 },
+                { question: "What is the square root of 64?", options: ["6", "7", "8", "9"], correct: 2 },
+                { question: "Which animal is known as the 'King of the Jungle'?", options: ["Elephant", "Tiger", "Lion", "Gorilla"], correct: 2 }
             ];
+            return questionBank;
         }
     }
     
     // Show initial quiz (infinite chances)
     function showInitialQuiz(questions) {
+        if (!questions || questions.length === 0) {
+            startGameAfterQuiz();
+            return;
+        }
+        
+        let currentQIndex = 0;
         const overlay = document.createElement('div');
         overlay.className = 'quiz-overlay';
         overlay.id = 'quizOverlay';
         
         function updateQuizDisplay() {
-            if (currentQuestionIndex >= questions.length) {
+            if (currentQIndex >= questions.length) {
                 overlay.remove();
                 startGameAfterQuiz();
                 return;
             }
             
-            const q = questions[currentQuestionIndex];
+            const q = questions[currentQIndex];
             overlay.innerHTML = `
                 <div class="quiz-container">
-                    <div class="progress-badge">📚 QUALIFICATION • QUESTION ${currentQuestionIndex + 1}/${questions.length}</div>
-                    <div class="progress-badge" style="color:#88ff88">✨ Infinite attempts • Keep trying!</div>
-                    <div class="quiz-question">${q.question}</div>
+                    <div class="progress-badge">📚 QUALIFICATION • QUESTION ${currentQIndex + 1}/${questions.length}</div>
+                    <div class="progress-badge" style="color:#88ff88">✨ Keep trying until correct!</div>
+                    <div class="quiz-question">${escapeHtml(q.question)}</div>
                     <div class="quiz-options">
-                        ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${opt}</div>`).join('')}
+                        ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${escapeHtml(opt)}</div>`).join('')}
                     </div>
                 </div>
             `;
             
             document.querySelectorAll('.quiz-opt').forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const selected = parseInt(btn.dataset.opt);
                     if (selected === q.correct) {
-                        currentQuestionIndex++;
+                        currentQIndex++;
                         updateQuizDisplay();
                     } else {
-                        // Wrong answer - just show error, infinite chances
                         const msg = document.createElement('div');
                         msg.style.color = '#ff8888';
                         msg.style.textAlign = 'center';
@@ -386,94 +433,135 @@
     }
     
     // Show respawn quiz (one chance to revive)
-    function showRespawnQuiz(questions, onComplete) {
-        const overlay = document.createElement('div');
-        overlay.className = 'quiz-overlay';
-        overlay.id = 'quizOverlay';
+    function showRespawnQuiz(onComplete) {
+        if (!questionBank || questionBank.length === 0) {
+            onComplete(false);
+            return;
+        }
         
-        // Pick a random question
-        const randomIndex = Math.floor(Math.random() * questions.length);
-        const q = questions[randomIndex];
+        // Remove existing overlay if any
+        if (respawnOverlay && respawnOverlay.parentNode) {
+            respawnOverlay.remove();
+        }
         
-        overlay.innerHTML = `
+        const randomIndex = Math.floor(Math.random() * questionBank.length);
+        const q = questionBank[randomIndex];
+        
+        respawnOverlay = document.createElement('div');
+        respawnOverlay.className = 'quiz-overlay';
+        respawnOverlay.id = 'respawnOverlay';
+        
+        respawnOverlay.innerHTML = `
             <div class="quiz-container">
                 <div class="progress-badge" style="color:#ffaa66">⚠️ RESPAWN CHANCE ⚠️</div>
                 <div class="progress-badge">Answer correctly to revive! (1 life)</div>
-                <div class="quiz-question">${q.question}</div>
+                <div class="quiz-question">${escapeHtml(q.question)}</div>
                 <div class="quiz-options">
-                    ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${opt}</div>`).join('')}
+                    ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${escapeHtml(opt)}</div>`).join('')}
                 </div>
             </div>
         `;
         
-        document.querySelectorAll('.quiz-opt').forEach(btn => {
-            btn.addEventListener('click', () => {
+        document.body.appendChild(respawnOverlay);
+        
+        // Add event listeners
+        const options = respawnOverlay.querySelectorAll('.quiz-opt');
+        options.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const selected = parseInt(btn.dataset.opt);
-                if (selected === q.correct) {
-                    overlay.remove();
-                    onComplete(true);
-                } else {
-                    overlay.remove();
-                    onComplete(false);
+                if (respawnOverlay && respawnOverlay.parentNode) {
+                    respawnOverlay.remove();
+                    respawnOverlay = null;
                 }
+                onComplete(selected === q.correct);
             });
         });
-        
-        document.body.appendChild(overlay);
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     function startGameAfterQuiz() {
         quizActive = false;
         gameLocked = false;
-        gameActive = true;
-        document.getElementById('gameStatusMsg').innerHTML = '🎮 Game started! Tap circles!';
-        fullReset(true);
+        gameActive = false;  // Will be activated after countdown
+        document.getElementById('gameStatusMsg').innerHTML = '🎮 Get ready! Game starting in 1.5 seconds...';
+        
+        // Enable difficulty buttons now
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+        });
+        
+        // Start countdown then game
+        setTimeout(() => {
+            if (!gameLocked) {
+                startCountdown();
+            }
+        }, 500);
     }
     
-    // Check accuracy and deduct lives if below 50%
+    function startCountdown() {
+        let countdown = 3;
+        const countdownInterval = setInterval(() => {
+            if (countdown > 0) {
+                document.getElementById('gameStatusMsg').innerHTML = `🎯 ${countdown}...`;
+                countdown--;
+            } else {
+                clearInterval(countdownInterval);
+                document.getElementById('gameStatusMsg').innerHTML = '🎵 GO! Tap circles!';
+                gameStarted = true;
+                gameActive = true;
+                fullReset();
+            }
+        }, 1000);
+    }
+    
+    // Check accuracy and deduct lives
     function checkAccuracyAndLives() {
-        if (!gameActive || gameLocked || gamePausedForRespawn) return;
+        if (!gameActive || gameLocked || gamePausedForRespawn || !gameStarted) return;
         
         const accuracy = totalHits > 0 ? (successfulHits / totalHits) * 100 : 100;
         document.getElementById('accuracyWarning').innerHTML = `📊 ACC: ${accuracy.toFixed(1)}%`;
+        document.getElementById('accValue').innerText = accuracy.toFixed(1);
         
-        if (accuracy < 50 && lives > 0 && !gamePausedForRespawn) {
+        if (accuracy < 50 && lives > 0 && !gamePausedForRespawn && gameStarted) {
             // Lose one life
             lives--;
             updateLivesDisplay();
             document.getElementById('gameStatusMsg').innerHTML = `⚠️ Accuracy below 50%! Lost 1 life (${lives} left)`;
             
             if (lives > 0) {
-                // Has respawn chance - pause game and ask question
+                // Pause game and ask question
                 gameActive = false;
                 gamePausedForRespawn = true;
                 
-                loadQuestions().then(questions => {
-                    showRespawnQuiz(questions, (success) => {
-                        if (success) {
-                            // Revive successful
-                            lives++;
-                            updateLivesDisplay();
-                            gameActive = true;
-                            gamePausedForRespawn = false;
-                            document.getElementById('gameStatusMsg').innerHTML = '✨ Revived! Keep playing!';
-                            // Reset accuracy tracking? No, keep stats but give second chance
-                            setTimeout(() => {
-                                if(gameActive) document.getElementById('gameStatusMsg').innerHTML = '🎧 Keep tapping!';
-                            }, 2000);
-                        } else {
-                            // Failed to revive - game over
-                            gameActive = false;
-                            gameLocked = true;
-                            document.getElementById('gameStatusMsg').innerHTML = '💀 GAME OVER - Failed to revive! 💀';
-                            document.getElementById('livesDisplay').innerHTML = `❤️ LIVES: 0`;
-                        }
-                    });
+                showRespawnQuiz((success) => {
+                    gamePausedForRespawn = false;
+                    if (success) {
+                        lives++;
+                        updateLivesDisplay();
+                        gameActive = true;
+                        document.getElementById('gameStatusMsg').innerHTML = '✨ Revived! Keep playing!';
+                        setTimeout(() => {
+                            if(gameActive && gameStarted) document.getElementById('gameStatusMsg').innerHTML = '🎧 Keep tapping!';
+                        }, 2000);
+                    } else {
+                        gameActive = false;
+                        gameLocked = true;
+                        gameStarted = false;
+                        document.getElementById('gameStatusMsg').innerHTML = '💀 GAME OVER - Failed to revive! 💀';
+                        document.getElementById('livesDisplay').innerHTML = `❤️ LIVES: 0`;
+                    }
                 });
             } else {
-                // No lives left - game over
                 gameActive = false;
                 gameLocked = true;
+                gameStarted = false;
                 document.getElementById('gameStatusMsg').innerHTML = '💀 GAME OVER - No lives remaining! 💀';
             }
         }
@@ -487,18 +575,26 @@
         }
     }
     
-    // Generate beatmap
+    // Generate beatmap with slower beginning
     function generateBeatmap(diffIndex) {
         const cfg = difficulties[diffIndex];
         const totalNotes = cfg.noteCount;
-        const startOffset = 600;
-        const endMargin = 500;
+        const startOffset = 2000;  // 2 seconds before first note
+        const endMargin = 800;
         const tStart = startOffset;
         const tEnd = GAME_DURATION_MS - endMargin;
         const timestamps = [];
+        
         for(let i = 0; i < totalNotes; i++) {
-            let t = tStart + (i / (totalNotes-1)) * (tEnd - tStart);
-            t += (Math.random() - 0.5) * 32;
+            // Easing function - notes start slower, get faster
+            let t;
+            if (i < totalNotes * 0.3) {
+                // First 30%: slower pace
+                t = tStart + (i / (totalNotes * 0.3)) * (tEnd * 0.3);
+            } else {
+                t = tStart + (tEnd * 0.3) + ((i - totalNotes * 0.3) / (totalNotes * 0.7)) * (tEnd * 0.7);
+            }
+            t += (Math.random() - 0.5) * 40;
             timestamps.push(Math.min(tEnd, Math.max(tStart, t)));
         }
         timestamps.sort((a,b)=>a-b);
@@ -506,7 +602,7 @@
     }
     
     function randomHitPosition(radius) {
-        const margin = 65;
+        const margin = 70;
         const maxX = canvasElem.width - margin - radius;
         const minX = margin + radius;
         const maxY = canvasElem.height - margin - radius*1.2;
@@ -517,13 +613,9 @@
         };
     }
     
-    function fullReset(keepDifficulty = true) {
-        if(gameLocked && !quizActive) return;
-        
+    function fullReset() {
         if(animationId) cancelAnimationFrame(animationId);
         
-        gameActive = true;
-        gamePausedForRespawn = false;
         circles = [];
         score = 0;
         combo = 0;
@@ -552,8 +644,14 @@
         gameStartTimestamp = performance.now();
         
         function gameUpdate() {
-            if((!gameActive || gamePausedForRespawn) && circles.length === 0 && !gamePausedForRespawn) {
-                drawCanvas();
+            if(!gameStarted) {
+                drawCanvas(0);
+                animationId = requestAnimationFrame(gameUpdate);
+                return;
+            }
+            
+            if((!gameActive || gamePausedForRespawn) && !gamePausedForRespawn) {
+                drawCanvas(0);
                 animationId = requestAnimationFrame(gameUpdate);
                 return;
             }
@@ -561,11 +659,10 @@
             const now = performance.now();
             const elapsed = now - gameStartTimestamp;
             
-            // Only spawn and process if game is active and not paused
-            if(gameActive && !gamePausedForRespawn) {
+            if(gameActive && !gamePausedForRespawn && gameStarted) {
                 // Spawn notes
                 if(pendingNotes && nextSpawnIdx < pendingNotes.length) {
-                    const approachLead = difficulties[currentDifficulty].approachRate * 420;
+                    const approachLead = difficulties[currentDifficulty].approachRate * 500;
                     while(nextSpawnIdx < pendingNotes.length) {
                         const note = pendingNotes[nextSpawnIdx];
                         const spawnTime = note.timeMs - approachLead;
@@ -578,9 +675,7 @@
                                     y: note.y,
                                     radius: note.radius,
                                     targetTime: note.timeMs,
-                                    hit: false,
-                                    approachRate: difficulties[currentDifficulty].approachRate,
-                                    radiusBase: note.radius
+                                    hit: false
                                 });
                             }
                             nextSpawnIdx++;
@@ -595,7 +690,7 @@
                     const c = circles[i];
                     if(!c.hit) {
                         const missDelta = elapsed - c.targetTime;
-                        if(missDelta > HIT_WINDOW_BAD + 45) {
+                        if(missDelta > HIT_WINDOW_BAD + 50) {
                             c.hit = true;
                             combo = 0;
                             totalHits++;
@@ -607,16 +702,16 @@
                 circles = circles.filter(c => {
                     if(c.hit) return false;
                     const nowMs = elapsed;
-                    if(nowMs - c.targetTime > HIT_WINDOW_BAD + 70) return false;
+                    if(nowMs - c.targetTime > HIT_WINDOW_BAD + 80) return false;
                     return true;
                 });
             }
             
             // Check game end
             const allNotesProcessed = pendingNotes && nextSpawnIdx >= pendingNotes.length && circles.length === 0;
-            if(allNotesProcessed && gameActive && !gamePausedForRespawn && elapsed > GAME_DURATION_MS + 400) {
+            if(allNotesProcessed && gameActive && !gamePausedForRespawn && elapsed > GAME_DURATION_MS + 500) {
                 finishGame();
-            } else if(elapsed > GAME_DURATION_MS + 1000 && gameActive && !gamePausedForRespawn) {
+            } else if(elapsed > GAME_DURATION_MS + 1500 && gameActive && !gamePausedForRespawn) {
                 finishGame();
             }
             
@@ -632,12 +727,13 @@
     function finishGame() {
         if(!gameActive) return;
         gameActive = false;
+        gameStarted = false;
         const acc = totalHits > 0 ? ((successfulHits / totalHits) * 100).toFixed(1) : 100;
         document.getElementById('gameStatusMsg').innerHTML = `🏆 CLEAR! Score: ${score} | Acc: ${acc}% | Max Combo: ${maxCombo} 🎉`;
     }
     
     function handleTap(clientX, clientY) {
-        if(!gameActive || gameLocked || gamePausedForRespawn) {
+        if(!gameActive || gameLocked || gamePausedForRespawn || !gameStarted) {
             if(gamePausedForRespawn) document.getElementById('gameStatusMsg').innerHTML = '❌ Answer the question to revive!';
             else if(gameLocked) document.getElementById('gameStatusMsg').innerHTML = '❌ Answer initial questions first!';
             return;
@@ -654,14 +750,14 @@
         const elapsedGame = performance.now() - gameStartTimestamp;
         
         let closestCircle = null;
-        let minDistance = 55;
+        let minDistance = 60;
         for(let i=0; i<circles.length; i++) {
             const c = circles[i];
             if(c.hit) continue;
             const dx = c.x - canvasX;
             const dy = c.y - canvasY;
             const dist = Math.hypot(dx, dy);
-            const tapRad = c.radius * 1.5;
+            const tapRad = c.radius * 1.6;
             if(dist <= tapRad) {
                 const timeDiff = Math.abs(elapsedGame - c.targetTime);
                 if(timeDiff <= HIT_WINDOW_BAD) {
@@ -691,8 +787,8 @@
             window.lastHitEffect = { x: closestCircle.x, y: closestCircle.y, timer: 8 };
             document.getElementById('gameStatusMsg').innerHTML = isPerfect ? "🔥 PERFECT!" : "👍 GOOD!";
             setTimeout(()=>{
-                if(gameActive && !gamePausedForRespawn) document.getElementById('gameStatusMsg').innerHTML = `🎧 keep tapping!`;
-            }, 220);
+                if(gameActive && !gamePausedForRespawn && gameStarted) document.getElementById('gameStatusMsg').innerHTML = `🎧 Keep tapping!`;
+            }, 200);
         } else {
             combo = 0;
             totalHits++;
@@ -700,8 +796,8 @@
             checkAccuracyAndLives();
             document.getElementById('gameStatusMsg').innerHTML = "❌ MISS...";
             setTimeout(()=>{
-                if(gameActive && !gamePausedForRespawn) document.getElementById('gameStatusMsg').innerHTML = `🎧 keep tapping!`;
-            }, 220);
+                if(gameActive && !gamePausedForRespawn && gameStarted) document.getElementById('gameStatusMsg').innerHTML = `🎧 Keep tapping!`;
+            }, 200);
         }
         updateUIStats();
     }
@@ -727,13 +823,13 @@
             const timeToHit = c.targetTime - nowElapsed;
             let approachScale = 1.0;
             if(timeToHit > 0) {
-                const leadTime = cfg.approachRate * 420;
+                const leadTime = cfg.approachRate * 500;
                 if(leadTime > 0) {
                     let t = Math.min(1, Math.max(0, (leadTime - timeToHit) / leadTime));
-                    approachScale = 0.4 + t * 1.2;
+                    approachScale = 0.5 + t * 1.3;
                 }
             } else {
-                approachScale = 1.5;
+                approachScale = 1.6;
             }
             const approachRadius = c.radius * approachScale;
             ctx.beginPath();
@@ -753,43 +849,61 @@
         
         if(window.lastHitEffect && window.lastHitEffect.timer > 0) {
             ctx.beginPath();
-            ctx.arc(window.lastHitEffect.x, window.lastHitEffect.y, 40, 0, Math.PI*2);
+            ctx.arc(window.lastHitEffect.x, window.lastHitEffect.y, 45, 0, Math.PI*2);
             ctx.fillStyle = "#ffffffaa";
             ctx.fill();
             window.lastHitEffect.timer--;
             if(window.lastHitEffect.timer <=0) window.lastHitEffect = null;
         }
         
-        if(combo >= 5) {
-            ctx.font = `bold 30px "Montserrat"`;
+        if(combo >= 5 && gameStarted && gameActive) {
+            ctx.font = `bold 28px "Montserrat"`;
             ctx.fillStyle = "#ffe6b3";
-            ctx.fillText(`${combo}x`, canvasElem.width-90, 70);
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "#ff66aa";
+            ctx.fillText(`${combo}x`, canvasElem.width-80, 65);
+            ctx.shadowBlur = 0;
+        }
+        
+        if (!gameStarted && !gameLocked) {
+            ctx.font = `bold 32px "Montserrat"`;
+            ctx.fillStyle = "#ffdd99";
+            ctx.shadowBlur = 10;
+            ctx.textAlign = "center";
+            ctx.fillText("GET READY!", canvasElem.width/2, canvasElem.height/2);
+            ctx.textAlign = "left";
+            ctx.shadowBlur = 0;
         }
         
         const elapsed = performance.now() - gameStartTimestamp;
         const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION_MS));
         ctx.fillStyle = "#ff66aa90";
-        ctx.fillRect(20, canvasElem.height-28, (canvasElem.width-40) * prog, 12);
+        ctx.fillRect(20, canvasElem.height-25, (canvasElem.width-40) * prog, 10);
         ctx.fillStyle = "#ffffff30";
-        ctx.fillRect(20, canvasElem.height-28, canvasElem.width-40, 12);
+        ctx.fillRect(20, canvasElem.height-25, canvasElem.width-40, 10);
         ctx.fillStyle = "#ffaaee";
-        ctx.fillRect(20, canvasElem.height-28, (canvasElem.width-40) * prog, 12);
+        ctx.fillRect(20, canvasElem.height-25, (canvasElem.width-40) * prog, 10);
     }
     
-    // Event binding
-    canvasElem.addEventListener('click', (e) => handleTap(e.clientX, e.clientY));
-    canvasElem.addEventListener('touchstart', (e) => {
+    // Event binding for touch and mouse
+    function handleTapEvent(e) {
         e.preventDefault();
-        const touch = e.touches[0];
-        if(touch) handleTap(touch.clientX, touch.clientY);
-    });
+        let clientX, clientY;
+        if (e.touches) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        handleTap(clientX, clientY);
+    }
+    
+    canvasElem.addEventListener('click', handleTapEvent);
+    canvasElem.addEventListener('touchstart', handleTapEvent, { passive: false });
     
     document.getElementById('resetGameBtn').addEventListener('click', () => {
         if(animationId) cancelAnimationFrame(animationId);
-        lives = 2;
-        gamePausedForRespawn = false;
-        updateLivesDisplay();
-        // Restart with initial quiz
         location.reload();
     });
     
@@ -799,38 +913,49 @@
         if(!gameLocked && !quizActive) {
             lives = 2;
             gamePausedForRespawn = false;
+            gameStarted = false;
             updateLivesDisplay();
-            fullReset(true);
+            startCountdown();
         }
     });
     
+    // Difficulty selection - NOW FULLY FUNCTIONAL
     document.querySelectorAll('.diff-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            if(gameLocked && !quizActive) {
-                document.getElementById('gameStatusMsg').innerHTML = '❌ Complete questions first!';
-                return;
-            }
+            e.stopPropagation();
+            // Allow difficulty change even before game starts
             const newDiff = parseInt(btn.getAttribute('data-diff'));
             if(!isNaN(newDiff) && newDiff !== currentDifficulty) {
                 currentDifficulty = newDiff;
                 document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                if(gameActive && !gameLocked && !quizActive) fullReset(true);
+                
+                // If game is active, restart with new difficulty
+                if(gameActive && gameStarted && !gameLocked && !quizActive) {
+                    if(animationId) cancelAnimationFrame(animationId);
+                    gameStarted = false;
+                    setTimeout(() => startCountdown(), 300);
+                }
             }
         });
+    });
+    
+    // Initially disable difficulty buttons until quiz is done
+    document.querySelectorAll('.diff-btn').forEach(btn => {
+        btn.style.pointerEvents = 'none';
+        btn.style.opacity = '0.6';
     });
     
     // Initialize game with quiz
     async function init() {
         const questions = await loadQuestions();
-        // Select 3 random questions for initial quiz
         const shuffled = [...questions];
         for(let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
-        currentQuestions = shuffled.slice(0, 3);
-        showInitialQuiz(currentQuestions);
+        const initialQuestions = shuffled.slice(0, 3);
+        showInitialQuiz(initialQuestions);
     }
     
     init();
