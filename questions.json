@@ -1,0 +1,54 @@
+{
+  "questions": [
+    {
+      "question": "What is the capital of Japan?",
+      "options": ["Seoul", "Beijing", "Tokyo", "Bangkok"],
+      "correct": 2
+    },
+    {
+      "question": "Which language is used for web development?",
+      "options": ["Python", "JavaScript", "C++", "Java"],
+      "correct": 1
+    },
+    {
+      "question": "What is 15 × 4?",
+      "options": ["45", "50", "60", "65"],
+      "correct": 2
+    },
+    {
+      "question": "Who created the game osu!?",
+      "options": ["Dean Herbert", "Markus Persson", "Hideo Kojima", "Shigeru Miyamoto"],
+      "correct": 0
+    },
+    {
+      "question": "What does HTML stand for?",
+      "options": ["Hyper Text Markup Language", "High Tech Modern Language", "Hyper Transfer Markup Language", "Home Tool Markup Language"],
+      "correct": 0
+    },
+    {
+      "question": "Which planet is closest to the Sun?",
+      "options": ["Venus", "Earth", "Mercury", "Mars"],
+      "correct": 2
+    },
+    {
+      "question": "What is the square root of 64?",
+      "options": ["6", "7", "8", "9"],
+      "correct": 2
+    },
+    {
+      "question": "Which company made Windows?",
+      "options": ["Apple", "Google", "Microsoft", "IBM"],
+      "correct": 2
+    },
+    {
+      "question": "What year did World War II end?",
+      "options": ["1943", "1944", "1945", "1946"],
+      "correct": 2
+    },
+    {
+      "question": "Who painted the Starry Night?",
+      "options": ["Picasso", "Van Gogh", "Monet", "Rembrandt"],
+      "correct": 1
+    }
+  ]
+}
