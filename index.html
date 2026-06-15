@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! Style · Working Drag Notes · Proper Miss Detection</title>
+    <title>osu! Style · Beautiful Drag Notes · Auto-Refresh</title>
     <style>
         * {
             user-select: none;
@@ -71,6 +71,7 @@
             cursor: pointer;
             text-align: center;
             font-size: 1rem;
+            transition: all 0.2s;
         }
 
         .quiz-opt:active {
@@ -234,6 +235,7 @@
             border-radius: 60px;
             color: #eff3ff;
             cursor: pointer;
+            transition: 0.15s linear;
         }
 
         button:active {
@@ -275,10 +277,71 @@
             100% { opacity: 0; transform: translateY(-80px) scale(0.9); }
         }
 
+        /* Death overlay */
+        .death-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .death-container {
+            text-align: center;
+            background: linear-gradient(135deg, #2a1a2a, #1a0a1a);
+            padding: 50px;
+            border-radius: 60px;
+            border: 3px solid #ff0000;
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.5);
+        }
+
+        .death-title {
+            font-size: 4rem;
+            font-weight: 900;
+            color: #ff0000;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+            margin-bottom: 20px;
+        }
+
+        .death-subtitle {
+            font-size: 1.5rem;
+            color: #ff8888;
+            margin-bottom: 30px;
+        }
+
+        .death-reload {
+            background: #ff0000;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border-radius: 60px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .death-reload:active {
+            transform: scale(0.95);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
         @media (max-width: 768px) {
             body { padding: 10px; }
             .floating-judgement { font-size: 1.5rem; }
             .difficulty-indicator { font-size: 0.75rem; top: 60px; }
+            .death-title { font-size: 2.5rem; }
+            .death-subtitle { font-size: 1rem; }
         }
     </style>
 </head>
@@ -312,16 +375,16 @@
         <div id="gameStatusMsg" class="result-message">✨ Answer 3 questions to start!</div>
     </div>
     <div class="footer-meta">
-        🎧 TAP circles • HOLD & DRAG on sliders • Accuracy &lt;60% = DEATH
+        🎧 TAP circles • HOLD & DRAG on sliders (follow the glow) • Accuracy &lt;60% = DEATH
     </div>
 </div>
 
 <script>
     const difficulties = [
-        { name: "EASY",   circleCount: 25, sliderCount: 4, approachTime: 1300, radius: 38, timingWindow: 1.3 },
-        { name: "NORMAL", circleCount: 38, sliderCount: 7, approachTime: 1000, radius: 34, timingWindow: 1.0 },
-        { name: "HARD",   circleCount: 55, sliderCount: 11, approachTime: 700, radius: 30, timingWindow: 0.8 },
-        { name: "INSANE", circleCount: 75, sliderCount: 16, approachTime: 500, radius: 27, timingWindow: 0.65 }
+        { name: "EASY",   circleCount: 25, sliderCount: 4, approachTime: 1300, radius: 38, timingWindow: 1.3, color: "#88ff88" },
+        { name: "NORMAL", circleCount: 38, sliderCount: 7, approachTime: 1000, radius: 34, timingWindow: 1.0, color: "#ffaa66" },
+        { name: "HARD",   circleCount: 55, sliderCount: 11, approachTime: 700, radius: 30, timingWindow: 0.8, color: "#ff6666" },
+        { name: "INSANE", circleCount: 75, sliderCount: 16, approachTime: 500, radius: 27, timingWindow: 0.65, color: "#ff44ff" }
     ];
     
     const TIMING = { perfect: 45, good: 90, ok: 160 };
@@ -330,11 +393,11 @@
     const GAME_DURATION = 34000;
     
     let canvas, ctx;
-    let activeNotes = [];
+    let activeCircles = [];
     let activeSliders = [];
     let currentDrag = null;
     let dragStartTime = 0;
-    let score = 0, combo = 0, maxCombo = 0, totalNotes = 0, misses = 0;
+    let score = 0, combo = 0, maxCombo = 0, totalHits = 0, misses = 0;
     let gameActive = false, gameStarted = false;
     let currentDifficulty = 1;
     let gameStartTime = 0;
@@ -345,12 +408,33 @@
     let lives = 2;
     let quizActive = true, gameLocked = true;
     let questionBank = [];
-    let pendingDeath = false;
+    let deathTriggered = false;
     
     const canvasElem = document.getElementById('gameCanvas');
     canvasElem.width = 800;
     canvasElem.height = 500;
     ctx = canvasElem.getContext('2d');
+    
+    function showDeathScreen() {
+        if (deathTriggered) return;
+        deathTriggered = true;
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'death-overlay';
+        overlay.innerHTML = `
+            <div class="death-container">
+                <div class="death-title">💀 GAME OVER 💀</div>
+                <div class="death-subtitle">Accuracy fell below 60%</div>
+                <button class="death-reload" id="deathReloadBtn">🔄 TRY AGAIN</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        document.getElementById('deathReloadBtn').onclick = () => location.reload();
+        
+        // Auto-refresh after 3 seconds
+        setTimeout(() => location.reload(), 3000);
+    }
     
     function showMessage(text, x, y, color) {
         const div = document.createElement('div');
@@ -364,18 +448,14 @@
     }
     
     function updateAccuracy() {
-        let acc = totalNotes + misses === 0 ? 100 : (totalNotes / (totalNotes + misses)) * 100;
+        let acc = totalHits + misses === 0 ? 100 : (totalHits / (totalHits + misses)) * 100;
         document.getElementById('accuracyWarning').innerHTML = `📊 ACC: ${acc.toFixed(1)}%`;
         document.getElementById('accValue').innerText = acc.toFixed(1);
         
-        if (acc < 60 && gameActive && gameStarted && totalNotes + misses > 10 && !pendingDeath) {
-            pendingDeath = true;
+        if (acc < 60 && gameActive && gameStarted && totalHits + misses > 10 && !deathTriggered) {
             gameActive = false;
             gameStarted = false;
-            document.getElementById('gameStatusMsg').innerHTML = '💀 ACCURACY BELOW 60% - GAME OVER 💀';
-            document.getElementById('livesDisplay').innerHTML = '❤️ LIVES: 0';
-            showMessage("DEATH", canvasElem.width/2, canvasElem.height/2, "#ff0000");
-            if (animationId) cancelAnimationFrame(animationId);
+            showDeathScreen();
         }
         return acc;
     }
@@ -384,6 +464,25 @@
         document.getElementById('scoreValue').innerText = Math.floor(score);
         document.getElementById('comboValue').innerText = combo;
         updateAccuracy();
+    }
+    
+    function generateBezierPath(startX, startY, endX, endY) {
+        const points = [];
+        const steps = 30;
+        
+        // Control points for a beautiful S-curve
+        const cp1x = startX + (endX - startX) * 0.25 + (Math.random() - 0.5) * 40;
+        const cp1y = startY + (endY - startY) * 0.2 + (Math.random() - 0.5) * 60;
+        const cp2x = startX + (endX - startX) * 0.75 + (Math.random() - 0.5) * 40;
+        const cp2y = startY + (endY - startY) * 0.8 + (Math.random() - 0.5) * 60;
+        
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const x = Math.pow(1-t,3)*startX + 3*Math.pow(1-t,2)*t*cp1x + 3*(1-t)*Math.pow(t,2)*cp2x + Math.pow(t,3)*endX;
+            const y = Math.pow(1-t,3)*startY + 3*Math.pow(1-t,2)*t*cp1y + 3*(1-t)*Math.pow(t,2)*cp2y + Math.pow(t,3)*endY;
+            points.push({x, y});
+        }
+        return points;
     }
     
     function generateNotes() {
@@ -412,7 +511,7 @@
             });
         }
         
-        // Generate sliders
+        // Generate sliders with beautiful paths
         for (let i = 0; i < diff.sliderCount; i++) {
             let t = startOffset + 800 + (i / diff.sliderCount) * (endTime - startOffset - 1000);
             t += (Math.random() - 0.5) * 50;
@@ -421,25 +520,12 @@
             const startX = margin + Math.random() * (canvasElem.width - margin * 2);
             const startY = margin + Math.random() * (canvasElem.height - margin * 2);
             
-            let endX = startX + (Math.random() - 0.5) * 140;
-            let endY = startY + (Math.random() - 0.5) * 100;
+            let endX = startX + (Math.random() - 0.5) * 180;
+            let endY = startY + (Math.random() - 0.5) * 120;
             endX = Math.min(canvasElem.width - margin, Math.max(margin, endX));
             endY = Math.min(canvasElem.height - margin, Math.max(margin, endY));
             
-            // Create bezier path points
-            const points = [];
-            const steps = 25;
-            const cp1x = startX + (endX - startX) * 0.3 + (Math.random() - 0.5) * 60;
-            const cp1y = startY + (endY - startY) * 0.2 + (Math.random() - 0.5) * 50;
-            const cp2x = startX + (endX - startX) * 0.7 + (Math.random() - 0.5) * 60;
-            const cp2y = startY + (endY - startY) * 0.8 + (Math.random() - 0.5) * 50;
-            
-            for (let s = 0; s <= steps; s++) {
-                const u = s / steps;
-                const x = Math.pow(1-u,3)*startX + 3*Math.pow(1-u,2)*u*cp1x + 3*(1-u)*Math.pow(u,2)*cp2x + Math.pow(u,3)*endX;
-                const y = Math.pow(1-u,3)*startY + 3*Math.pow(1-u,2)*u*cp1y + 3*(1-u)*Math.pow(u,2)*cp2y + Math.pow(u,3)*endY;
-                points.push({x, y});
-            }
+            const points = generateBezierPath(startX, startY, endX, endY);
             
             notes.push({
                 type: 'slider',
@@ -478,12 +564,12 @@
                 document.getElementById('gameStatusMsg').innerHTML = '🎵 GO!';
                 gameStarted = true;
                 gameActive = true;
-                pendingDeath = false;
+                deathTriggered = false;
                 allNotes = generateNotes();
                 nextNoteIndex = 0;
-                activeNotes = [];
+                activeCircles = [];
                 activeSliders = [];
-                score = 0; combo = 0; maxCombo = 0; totalNotes = 0; misses = 0;
+                score = 0; combo = 0; maxCombo = 0; totalHits = 0; misses = 0;
                 gameStartTime = performance.now();
                 updateUI();
                 
@@ -494,19 +580,19 @@
                     const now = performance.now();
                     const elapsed = now - gameStartTime;
                     
-                    if (gameActive && !quizActive) {
+                    if (gameActive && !quizActive && !deathTriggered) {
                         // Spawn new notes
                         while (nextNoteIndex < allNotes.length && elapsed >= allNotes[nextNoteIndex].time - allNotes[nextNoteIndex].approachTime) {
                             const note = allNotes[nextNoteIndex];
-                            if (note.type === 'circle') activeNotes.push({...note});
+                            if (note.type === 'circle') activeCircles.push({...note});
                             else activeSliders.push({...note});
                             nextNoteIndex++;
                         }
                         
                         // Check misses for circles
                         const timingOk = TIMING.ok * difficulties[currentDifficulty].timingWindow;
-                        for (let i = 0; i < activeNotes.length; i++) {
-                            const note = activeNotes[i];
+                        for (let i = 0; i < activeCircles.length; i++) {
+                            const note = activeCircles[i];
                             if (!note.hit && elapsed > note.time + timingOk + 50) {
                                 note.hit = true;
                                 combo = 0;
@@ -515,9 +601,9 @@
                                 showMessage("MISS", note.x, note.y, "#ff6666");
                             }
                         }
-                        activeNotes = activeNotes.filter(n => !n.hit);
+                        activeCircles = activeCircles.filter(n => !n.hit);
                         
-                        // Check misses for sliders (not started)
+                        // Check misses for sliders
                         for (let i = 0; i < activeSliders.length; i++) {
                             const slider = activeSliders[i];
                             if (!slider.hit && !slider.completed && elapsed > slider.time + timingOk + 100) {
@@ -553,50 +639,91 @@
         const now = performance.now();
         const elapsed = now - gameStartTime;
         
-        // Draw sliders
+        // Draw sliders first (so circles are on top)
         for (const s of activeSliders) {
             const timeToHit = s.time - elapsed;
-            const alpha = Math.min(1, Math.max(0.4, 1 - (s.approachTime - timeToHit) / s.approachTime * 0.6));
+            const alpha = Math.min(1, Math.max(0.4, 1 - (s.approachTime - timeToHit) / s.approachTime * 0.5));
+            const glowIntensity = currentDrag && currentDrag.id === s.id ? 1 : 0.6;
             
-            // Draw slider path
+            // Draw glow effect on path
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = currentDrag && currentDrag.id === s.id ? '#ff88ff' : '#ff44aa';
+            
+            // Draw slider path with gradient
             ctx.beginPath();
             ctx.moveTo(s.points[0].x, s.points[0].y);
             for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
-            ctx.strokeStyle = `rgba(255, 120, 200, ${alpha})`;
-            ctx.lineWidth = 8;
+            
+            const gradient = ctx.createLinearGradient(s.startX, s.startY, s.endX, s.endY);
+            gradient.addColorStop(0, `rgba(255, 100, 180, ${alpha * glowIntensity})`);
+            gradient.addColorStop(1, `rgba(255, 60, 220, ${alpha * glowIntensity})`);
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 10;
             ctx.stroke();
             
-            // Draw start circle
+            // Draw tick markers along the path
+            ctx.shadowBlur = 0;
+            for (let i = 0; i < s.points.length; i += 3) {
+                ctx.beginPath();
+                ctx.arc(s.points[i].x, s.points[i].y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 200, 255, ${alpha * 0.8})`;
+                ctx.fill();
+            }
+            
+            // Draw start circle (pulsing)
             ctx.beginPath();
-            ctx.arc(s.startX, s.startY, s.radius, 0, Math.PI * 2);
+            ctx.arc(s.startX, s.startY, s.radius + (currentDrag && currentDrag.id === s.id ? 5 : 0), 0, Math.PI * 2);
             ctx.fillStyle = `rgba(255, 80, 160, ${alpha})`;
             ctx.fill();
             ctx.beginPath();
-            ctx.arc(s.startX, s.startY, s.radius - 5, 0, Math.PI * 2);
+            ctx.arc(s.startX, s.startY, s.radius - 4, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(255, 200, 240, ${alpha})`;
             ctx.fill();
             
-            // Draw end circle
+            // Draw star icon on start
+            ctx.font = `${s.radius - 6}px "Segoe UI"`;
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fillText("●", s.startX - 7, s.startY + 6);
+            
+            // Draw end circle (target)
             ctx.beginPath();
-            ctx.arc(s.endX, s.endY, s.radius - 3, 0, Math.PI * 2);
+            ctx.arc(s.endX, s.endY, s.radius - 2, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(255, 150, 200, ${alpha})`;
             ctx.fill();
+            ctx.beginPath();
+            ctx.arc(s.endX, s.endY, s.radius - 8, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 200, ${alpha})`;
+            ctx.fill();
             
-            // Draw progress if being dragged
-            if (currentDrag && currentDrag.id === s.id) {
-                const progress = s.dragProgress || 0;
-                const pointIndex = Math.floor(progress * (s.points.length - 1));
-                if (pointIndex < s.points.length) {
+            // Draw progress highlight while dragging
+            if (currentDrag && currentDrag.id === s.id && s.dragProgress > 0) {
+                const progressIndex = Math.floor(s.dragProgress * (s.points.length - 1));
+                for (let i = 0; i <= progressIndex; i++) {
                     ctx.beginPath();
-                    ctx.arc(s.points[pointIndex].x, s.points[pointIndex].y, s.radius + 5, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 255, 100, 0.6)`;
+                    ctx.arc(s.points[i].x, s.points[i].y, s.radius - 2, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 255, 100, 0.7)`;
+                    ctx.fill();
+                }
+            }
+            
+            // Draw trailing orb while dragging
+            if (currentDrag && currentDrag.id === s.id) {
+                const trailIndex = Math.floor((s.dragProgress || 0) * (s.points.length - 1));
+                if (trailIndex < s.points.length) {
+                    ctx.beginPath();
+                    ctx.arc(s.points[trailIndex].x, s.points[trailIndex].y, s.radius + 6, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 255, 180, 0.8)`;
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(s.points[trailIndex].x, s.points[trailIndex].y, s.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 200, 100, 1)`;
                     ctx.fill();
                 }
             }
         }
         
         // Draw circles
-        for (const c of activeNotes) {
+        for (const c of activeCircles) {
             const timeToHit = c.time - elapsed;
             let scale = 1.0;
             if (timeToHit > 0) {
@@ -615,15 +742,18 @@
             ctx.arc(c.x, c.y, c.radius - 2, 0, Math.PI * 2);
             ctx.fillStyle = "#ff66aa";
             ctx.fill();
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#ff66aa";
             
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.radius - 8, 0, Math.PI * 2);
             ctx.fillStyle = "#ffffff";
             ctx.fill();
+            ctx.shadowBlur = 0;
         }
         
         // Combo display
-        if (combo >= 5 && gameStarted && gameActive) {
+        if (combo >= 5 && gameStarted && gameActive && !deathTriggered) {
             ctx.font = `bold 36px "Montserrat"`;
             ctx.fillStyle = "#ffe6b3";
             ctx.shadowBlur = 10;
@@ -643,7 +773,7 @@
     }
     
     function handleTap(clientX, clientY) {
-        if (!gameActive || gameLocked || quizActive || !gameStarted) return;
+        if (!gameActive || gameLocked || quizActive || !gameStarted || deathTriggered) return;
         
         const rect = canvasElem.getBoundingClientRect();
         const scaleX = canvasElem.width / rect.width;
@@ -652,9 +782,9 @@
         const canvasY = (clientY - rect.top) * scaleY;
         const elapsed = performance.now() - gameStartTime;
         
-        // Check circles first
-        for (let i = 0; i < activeNotes.length; i++) {
-            const c = activeNotes[i];
+        // Check circles
+        for (let i = 0; i < activeCircles.length; i++) {
+            const c = activeCircles[i];
             const dx = c.x - canvasX;
             const dy = c.y - canvasY;
             if (Math.hypot(dx, dy) <= c.radius * 1.5) {
@@ -684,7 +814,7 @@
                 score += points + Math.floor(combo * 3);
                 combo++;
                 if (combo > maxCombo) maxCombo = combo;
-                totalNotes++;
+                totalHits++;
                 c.hit = true;
                 updateUI();
                 showMessage(judgement, clientX, clientY, color);
@@ -692,7 +822,7 @@
             }
         }
         
-        // Check sliders (start)
+        // Check sliders
         for (let i = 0; i < activeSliders.length; i++) {
             const s = activeSliders[i];
             const dx = s.startX - canvasX;
@@ -718,7 +848,7 @@
     }
     
     function handleDrag(clientX, clientY) {
-        if (!currentDrag || !gameActive || !gameStarted) return;
+        if (!currentDrag || !gameActive || !gameStarted || deathTriggered) return;
         
         const rect = canvasElem.getBoundingClientRect();
         const scaleX = canvasElem.width / rect.width;
@@ -741,16 +871,14 @@
             currentDrag.dragProgress = bestProgress;
             
             if (currentDrag.dragProgress >= 0.98) {
-                // Slider completed!
                 const points = SLIDER_SCORE + Math.floor(combo * 2);
                 score += points;
                 combo++;
                 if (combo > maxCombo) maxCombo = combo;
-                totalNotes++;
+                totalHits++;
                 updateUI();
                 showMessage("SLIDER END", clientX, clientY, "#ff88ff");
                 
-                // Remove from active sliders
                 const index = activeSliders.findIndex(s => s.id === currentDrag.id);
                 if (index !== -1) activeSliders.splice(index, 1);
                 currentDrag = null;
@@ -791,18 +919,13 @@
                 currentDifficulty = newDiff;
                 document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                updateDifficultyIndicator();
-                if (gameStarted && !gameLocked && !quizActive) location.reload();
+                document.getElementById('difficultyIndicator').innerHTML = `⚔️ ${difficulties[currentDifficulty].name} ⚔️`;
+                document.getElementById('difficultyIndicator').style.borderColor = difficulties[currentDifficulty].color;
+                document.getElementById('difficultyIndicator').style.color = difficulties[currentDifficulty].color;
+                if (gameStarted && !gameLocked && !quizActive && !deathTriggered) location.reload();
             }
         };
     });
-    
-    function updateDifficultyIndicator() {
-        const diff = difficulties[currentDifficulty];
-        document.getElementById('difficultyIndicator').innerHTML = `⚔️ ${diff.name} ⚔️`;
-        document.getElementById('difficultyIndicator').style.borderColor = diff.color;
-        document.getElementById('difficultyIndicator').style.color = diff.color;
-    }
     
     async function loadQuestions() {
         try {
@@ -814,7 +937,9 @@
             questionBank = [
                 { question: "What is the capital of France?", options: ["London", "Berlin", "Paris", "Madrid"], correct: 2 },
                 { question: "What is 2 + 2?", options: ["3", "4", "5", "6"], correct: 1 },
-                { question: "Who painted the Mona Lisa?", options: ["Van Gogh", "Picasso", "Da Vinci", "Rembrandt"], correct: 2 }
+                { question: "Who painted the Mona Lisa?", options: ["Van Gogh", "Picasso", "Da Vinci", "Rembrandt"], correct: 2 },
+                { question: "Which planet is known as the Red Planet?", options: ["Mars", "Jupiter", "Venus", "Saturn"], correct: 0 },
+                { question: "What is the largest ocean?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 }
             ];
         }
     }
@@ -866,7 +991,8 @@
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.6';
     });
-    updateDifficultyIndicator();
+    document.getElementById('difficultyIndicator').style.borderColor = difficulties[currentDifficulty].color;
+    document.getElementById('difficultyIndicator').style.color = difficulties[currentDifficulty].color;
     
     loadQuestions().then(() => startQuiz());
 </script>
