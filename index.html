@@ -931,4 +931,23 @@
         });
     });
     
-    document.querySelectorAll('.diff-btn').forEach(
+    document.querySelectorAll('.diff-btn').forEach(btn => {
+        btn.style.pointerEvents = 'none';
+        btn.style.opacity = '0.6';
+    });
+    
+    async function init() {
+        const questions = await loadQuestions();
+        const shuffled = [...questions];
+        for(let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        const initialQuestions = shuffled.slice(0, 3);
+        showInitialQuiz(initialQuestions);
+    }
+    
+    init();
+</script>
+</body>
+</html>
