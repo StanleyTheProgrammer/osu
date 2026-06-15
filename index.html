@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>osu! Quiz Challenge · 2 Lives & Questions</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0a0f1e 0%, #0c1222 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Poppins', 'Inter', system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* Quiz Modal */
+        .quiz-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .quiz-container {
+            background: linear-gradient(135deg, #1e1b2e, #141121);
+            border-radius: 48px;
+            padding: 40px;
+            max-width: 550px;
+            width: 90%;
+            border: 2px solid #ff88cc;
+            box-shadow: 0 0 40px rgba(255, 136, 204, 0.3);
+            animation: floatIn 0.3s ease;
+        }
+
+        @keyframes floatIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .quiz-question {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #ffd966;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .quiz-opt {
+            background: #2a2342;
+            border: 2px solid #5a4a8a;
+            padding: 14px 20px;
+            border-radius: 60px;
+            color: #f0e6ff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+
+        .quiz-opt:hover {
+            background: #ff66aa;
+            border-color: #ffffff;
+            transform: scale(1.02);
+            color: #1e1a2f;
+        }
+
+        .quiz-skip {
+            background: #4a3a6a;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 60px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            color: #ccc;
+            margin-top: 15px;
+        }
+
+        .quiz-skip:hover {
+            background: #ff4444;
+            color: white;
+        }
+
+        .progress-badge {
+            text-align: center;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #ffaa88;
+            font-weight: bold;
+        }
+
+        .lives-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: 1.3rem;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+            border: 1px solid #ff6699;
+        }
+
+        .game-container {
+            background: rgba(10, 14, 23, 0.65);
+            backdrop-filter: blur(4px);
+            border-radius: 64px;
+            padding: 24px 24px 30px 24px;
+            box-shadow: 0 25px 40px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 40px;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.5);
+            cursor: pointer;
+            background: #11161f;
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 25px;
+            margin: 18px 25px 10px 25px;
+            flex-wrap: wrap;
+        }
+
+        .stats {
+            display: flex;
+            gap: 28px;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 20px;
+            border-radius: 60px;
+        }
+
+        .stat {
+            font-weight: 700;
+        }
+
+        .stat span:first-child {
+            color: #aab3cf;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            margin-right: 8px;
+        }
+
+        .stat span:last-child {
+            color: #f3e9c0;
+            font-size: 1.7rem;
+            font-weight: 800;
+        }
+
+        .difficulty-bar {
+            display: flex;
+            gap: 12px;
+            background: rgba(0,0,0,0.5);
+            padding: 6px 18px;
+            border-radius: 60px;
+        }
+
+        .diff-btn {
+            background: #1e2438;
+            border: none;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 1rem;
+            padding: 6px 18px;
+            border-radius: 40px;
+            color: #cbd5ff;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .diff-btn.active {
+            background: #ff66aa;
+            color: white;
+            box-shadow: 0 0 12px #ff66aa80;
+        }
+
+        .action-area {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            margin-top: 12px;
+        }
+
+        button {
+            background: #292f42;
+            border: none;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 1rem;
+            padding: 8px 28px;
+            border-radius: 60px;
+            color: #eff3ff;
+            cursor: pointer;
+            transition: 0.15s linear;
+        }
+
+        button:active {
+            transform: translateY(2px);
+        }
+
+        .result-message {
+            text-align: center;
+            margin-top: 12px;
+            font-weight: 700;
+            background: #00000066;
+            padding: 5px 15px;
+            border-radius: 40px;
+            display: inline-block;
+            width: auto;
+        }
+
+        .footer-meta {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #7f8aa8;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+<div class="lives-display" id="livesDisplay">❤️ LIVES: 2</div>
+
+<div class="game-container">
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+    
+    <div class="info-panel">
+        <div class="stats">
+            <div class="stat"><span>🎯 SCORE</span><span id="scoreValue">0</span></div>
+            <div class="stat"><span>💯 ACC</span><span id="accValue">100</span><span style="font-size:1rem">%</span></div>
+            <div class="stat"><span>⭐ COMBO</span><span id="comboValue">0</span></div>
+        </div>
+        <div class="difficulty-bar" id="difficultySelector">
+            <button class="diff-btn" data-diff="0">🍃 EASY</button>
+            <button class="diff-btn" data-diff="1">🔥 NORMAL</button>
+            <button class="diff-btn" data-diff="2">⚡ HARD</button>
+            <button class="diff-btn" data-diff="3">💀 INSANE</button>
+        </div>
+    </div>
+
+    <div class="action-area">
+        <button id="resetGameBtn">🔄 NEW GAME</button>
+        <button id="restartSameBtn">🎵 RESTART</button>
+    </div>
+    <div style="display: flex; justify-content: center;">
+        <div id="gameStatusMsg" class="result-message">✨ Answer 3 questions to start!</div>
+    </div>
+    <div class="footer-meta">
+        🎧 2 LIVES • Answer questions correctly • Skip = wrong answer (lose 1 life)
+    </div>
+</div>
+
+<script>
+    // Game configuration
+    const difficulties = [
+        { name: "EASY",   noteCount: 32,  spawnWindowMs: 1000, approachRate: 1.1, radius: 34 },
+        { name: "NORMAL", noteCount: 48,  spawnWindowMs: 720,  approachRate: 0.9, radius: 32 },
+        { name: "HARD",   noteCount: 65,  spawnWindowMs: 540,  approachRate: 0.72, radius: 30 },
+        { name: "INSANE", noteCount: 85,  spawnWindowMs: 430,  approachRate: 0.58, radius: 28 }
+    ];
+    
+    const HIT_WINDOW_GOOD = 75;
+    const HIT_WINDOW_BAD = 150;
+    const BASE_SCORE = 250;
+    const GAME_DURATION_MS = 30500;
+    
+    let canvas, ctx;
+    let circles = [];
+    let score = 0, combo = 0, maxCombo = 0, totalHits = 0, successfulHits = 0;
+    let gameActive = false;
+    let currentDifficulty = 1;
+    let gameStartTimestamp = 0;
+    let animationId = null;
+    let beatTimestamps = [];
+    let pendingNotes = [];
+    let nextSpawnIdx = 0;
+    
+    // Lives & Quiz system
+    let lives = 2;
+    let currentQuestions = [];
+    let currentQuestionIndex = 0;
+    let quizActive = true;
+    let gameLocked = true;
+    
+    const canvasElem = document.getElementById('gameCanvas');
+    ctx = canvasElem.getContext('2d');
+    
+    // Load questions from JSON
+    async function loadQuestions() {
+        try {
+            const response = await fetch('questions.json');
+            if (!response.ok) throw new Error('Failed to load questions.json');
+            const data = await response.json();
+            return data.questions || data;
+        } catch (error) {
+            console.error('Error loading questions:', error);
+            // Fallback questions if JSON not found
+            return [
+                { question: "What is the capital of France?", options: ["London", "Berlin", "Paris", "Madrid"], correct: 2 },
+                { question: "Which planet is known as the Red Planet?", options: ["Mars", "Jupiter", "Venus", "Saturn"], correct: 0 },
+                { question: "What is 2 + 2?", options: ["3", "4", "5", "6"], correct: 1 },
+                { question: "Who painted the Mona Lisa?", options: ["Van Gogh", "Picasso", "Da Vinci", "Rembrandt"], correct: 2 },
+                { question: "What is the largest ocean on Earth?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 }
+            ];
+        }
+    }
+    
+    // Show quiz modal
+    function showQuiz(questions) {
+        const overlay = document.createElement('div');
+        overlay.className = 'quiz-overlay';
+        overlay.id = 'quizOverlay';
+        
+        function updateQuizDisplay() {
+            if (currentQuestionIndex >= questions.length || !gameLocked) {
+                overlay.remove();
+                startGameAfterQuiz();
+                return;
+            }
+            
+            const q = questions[currentQuestionIndex];
+            overlay.innerHTML = `
+                <div class="quiz-container">
+                    <div class="progress-badge">📚 QUESTION ${currentQuestionIndex + 1}/${questions.length} • ❤️ ${lives} lives left</div>
+                    <div class="quiz-question">${q.question}</div>
+                    <div class="quiz-options">
+                        ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${opt}</div>`).join('')}
+                    </div>
+                    <button class="quiz-skip" id="skipBtn">⏭️ SKIP (Wrong Answer)</button>
+                </div>
+            `;
+            
+            // Add event listeners
+            document.querySelectorAll('.quiz-opt').forEach(btn => {
+                btn.addEventListener('click', () => handleAnswer(parseInt(btn.dataset.opt), q.correct));
+            });
+            document.getElementById('skipBtn').addEventListener('click', () => handleSkip());
+        }
+        
+        function handleAnswer(selected, correct) {
+            if (selected === correct) {
+                // Correct answer: keep lives, move to next question
+                currentQuestionIndex++;
+                updateQuizDisplay();
+            } else {
+                // Wrong answer: lose a life
+                lives--;
+                document.getElementById('livesDisplay').innerHTML = `❤️ LIVES: ${lives}`;
+                if (lives <= 0) {
+                    // Game over - no lives left
+                    alert('❌ GAME OVER! No lives remaining. Refresh to try again.');
+                    overlay.innerHTML = `
+                        <div class="quiz-container">
+                            <div class="quiz-question" style="color:#ff6666">💀 GAME OVER 💀</div>
+                            <div class="progress-badge">You ran out of lives! Refresh the page to play again.</div>
+                        </div>
+                    `;
+                    gameLocked = true;
+                    gameActive = false;
+                    return;
+                }
+                currentQuestionIndex++;
+                updateQuizDisplay();
+            }
+        }
+        
+        function handleSkip() {
+            // Skip = wrong answer, lose a life
+            lives--;
+            document.getElementById('livesDisplay').innerHTML = `❤️ LIVES: ${lives}`;
+            if (lives <= 0) {
+                alert('❌ GAME OVER! No lives remaining. Refresh to try again.');
+                overlay.innerHTML = `
+                    <div class="quiz-container">
+                        <div class="quiz-question" style="color:#ff6666">💀 GAME OVER 💀</div>
+                        <div class="progress-badge">You ran out of lives! Refresh the page to play again.</div>
+                    </div>
+                `;
+                gameLocked = true;
+                gameActive = false;
+                return;
+            }
+            currentQuestionIndex++;
+            updateQuizDisplay();
+        }
+        
+        document.body.appendChild(overlay);
+        updateQuizDisplay();
+    }
+    
+    function startGameAfterQuiz() {
+        if (lives <= 0) {
+            document.getElementById('gameStatusMsg').innerHTML = '💀 GAME OVER - No lives left 💀';
+            gameLocked = true;
+            return;
+        }
+        
+        quizActive = false;
+        gameLocked = false;
+        document.getElementById('gameStatusMsg').innerHTML = '🎮 Game starting! Tap circles!';
+        fullReset(true);
+    }
+    
+    // Generate beatmap
+    function generateBeatmap(diffIndex) {
+        const cfg = difficulties[diffIndex];
+        const totalNotes = cfg.noteCount;
+        const startOffset = 600;
+        const endMargin = 500;
+        const tStart = startOffset;
+        const tEnd = GAME_DURATION_MS - endMargin;
+        const timestamps = [];
+        for(let i = 0; i < totalNotes; i++) {
+            let t = tStart + (i / (totalNotes-1)) * (tEnd - tStart);
+            t += (Math.random() - 0.5) * 32;
+            timestamps.push(Math.min(tEnd, Math.max(tStart, t)));
+        }
+        timestamps.sort((a,b)=>a-b);
+        return timestamps;
+    }
+    
+    function randomHitPosition(radius) {
+        const margin = 65;
+        const maxX = canvasElem.width - margin - radius;
+        const minX = margin + radius;
+        const maxY = canvasElem.height - margin - radius*1.2;
+        const minY = margin + radius*1.2;
+        return {
+            x: Math.floor(Math.random() * (maxX - minX + 1) + minX),
+            y: Math.floor(Math.random() * (maxY - minY + 1) + minY)
+        };
+    }
+    
+    function fullReset(keepDifficulty = true) {
+        if(gameLocked && !quizActive) return;
+        
+        if(animationId) cancelAnimationFrame(animationId);
+        
+        gameActive = true;
+        circles = [];
+        score = 0;
+        combo = 0;
+        maxCombo = 0;
+        totalHits = 0;
+        successfulHits = 0;
+        updateUIStats();
+        
+        beatTimestamps = generateBeatmap(currentDifficulty);
+        const cfg = difficulties[currentDifficulty];
+        
+        pendingNotes = beatTimestamps.map((timestamp, idx) => {
+            const pos = randomHitPosition(cfg.radius);
+            return {
+                timeMs: timestamp,
+                id: idx,
+                x: pos.x,
+                y: pos.y,
+                radius: cfg.radius,
+                generated: false,
+                hit: false
+            };
+        });
+        
+        nextSpawnIdx = 0;
+        gameStartTimestamp = performance.now();
+        
+        function gameUpdate() {
+            if(!gameActive && circles.length === 0) {
+                drawCanvas();
+                animationId = requestAnimationFrame(gameUpdate);
+                return;
+            }
+            
+            const now = performance.now();
+            const elapsed = now - gameStartTimestamp;
+            
+            // Spawn notes
+            if(pendingNotes && nextSpawnIdx < pendingNotes.length) {
+                const approachLead = difficulties[currentDifficulty].approachRate * 420;
+                while(nextSpawnIdx < pendingNotes.length) {
+                    const note = pendingNotes[nextSpawnIdx];
+                    const spawnTime = note.timeMs - approachLead;
+                    if(elapsed >= spawnTime) {
+                        if(!note.generated && !note.hit) {
+                            note.generated = true;
+                            circles.push({
+                                id: note.id,
+                                x: note.x,
+                                y: note.y,
+                                radius: note.radius,
+                                targetTime: note.timeMs,
+                                hit: false,
+                                approachRate: difficulties[currentDifficulty].approachRate,
+                                radiusBase: note.radius
+                            });
+                        }
+                        nextSpawnIdx++;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            
+            // Check misses
+            for(let i=0; i<circles.length; i++) {
+                const c = circles[i];
+                if(!c.hit) {
+                    const missDelta = elapsed - c.targetTime;
+                    if(missDelta > HIT_WINDOW_BAD + 45) {
+                        c.hit = true;
+                        combo = 0;
+                        totalHits++;
+                        updateUIStats();
+                    }
+                }
+            }
+            circles = circles.filter(c => {
+                if(c.hit) return false;
+                const nowMs = elapsed;
+                if(nowMs - c.targetTime > HIT_WINDOW_BAD + 70) return false;
+                return true;
+            });
+            
+            // Check game end
+            const allNotesProcessed = pendingNotes && nextSpawnIdx >= pendingNotes.length && circles.length === 0;
+            if(allNotesProcessed && gameActive && elapsed > GAME_DURATION_MS + 400) {
+                finishGame();
+            } else if(elapsed > GAME_DURATION_MS + 1000 && gameActive) {
+                finishGame();
+            }
+            
+            drawCanvas(elapsed);
+            animationId = requestAnimationFrame(gameUpdate);
+        }
+        
+        animationId = requestAnimationFrame(gameUpdate);
+        updateUIStats();
+        drawCanvas(0);
+    }
+    
+    function finishGame() {
+        if(!gameActive) return;
+        gameActive = false;
+        const acc = totalHits > 0 ? ((successfulHits / totalHits) * 100).toFixed(1) : 100;
+        document.getElementById('gameStatusMsg').innerHTML = `🏆 CLEAR! Score: ${score} | Acc: ${acc}% | Max Combo: ${maxCombo} 🎉`;
+    }
+    
+    function handleTap(clientX, clientY) {
+        if(!gameActive || gameLocked) {
+            document.getElementById('gameStatusMsg').innerHTML = gameLocked ? '❌ Answer questions first!' : '⏸️ Game finished';
+            return;
+        }
+        
+        const rect = canvasElem.getBoundingClientRect();
+        const scaleX = canvasElem.width / rect.width;
+        const scaleY = canvasElem.height / rect.height;
+        let canvasX = (clientX - rect.left) * scaleX;
+        let canvasY = (clientY - rect.top) * scaleY;
+        canvasX = Math.min(canvasElem.width, Math.max(0, canvasX));
+        canvasY = Math.min(canvasElem.height, Math.max(0, canvasY));
+        
+        const elapsedGame = performance.now() - gameStartTimestamp;
+        
+        let closestCircle = null;
+        let minDistance = 55;
+        for(let i=0; i<circles.length; i++) {
+            const c = circles[i];
+            if(c.hit) continue;
+            const dx = c.x - canvasX;
+            const dy = c.y - canvasY;
+            const dist = Math.hypot(dx, dy);
+            const tapRad = c.radius * 1.5;
+            if(dist <= tapRad) {
+                const timeDiff = Math.abs(elapsedGame - c.targetTime);
+                if(timeDiff <= HIT_WINDOW_BAD) {
+                    if(!closestCircle || dist < minDistance) {
+                        minDistance = dist;
+                        closestCircle = c;
+                    }
+                }
+            }
+        }
+        
+        if(closestCircle) {
+            const hitTimeDiff = Math.abs(elapsedGame - closestCircle.targetTime);
+            let points = BASE_SCORE;
+            let isPerfect = hitTimeDiff <= HIT_WINDOW_GOOD;
+            if(isPerfect) points = BASE_SCORE;
+            else points = Math.floor(BASE_SCORE * 0.7);
+            let finalAdd = points + Math.floor(combo * 4);
+            score += finalAdd;
+            combo++;
+            if(combo > maxCombo) maxCombo = combo;
+            successfulHits++;
+            totalHits++;
+            closestCircle.hit = true;
+            updateUIStats();
+            window.lastHitEffect = { x: closestCircle.x, y: closestCircle.y, timer: 8 };
+            document.getElementById('gameStatusMsg').innerHTML = isPerfect ? "🔥 PERFECT!" : "👍 GOOD!";
+            setTimeout(()=>{
+                if(gameActive) document.getElementById('gameStatusMsg').innerHTML = `🎧 keep tapping!`;
+            }, 220);
+        } else {
+            combo = 0;
+            totalHits++;
+            updateUIStats();
+            document.getElementById('gameStatusMsg').innerHTML = "❌ MISS...";
+            setTimeout(()=>{
+                if(gameActive) document.getElementById('gameStatusMsg').innerHTML = `🎧 keep tapping!`;
+            }, 220);
+        }
+        updateUIStats();
+    }
+    
+    function updateUIStats() {
+        document.getElementById('scoreValue').innerText = Math.floor(score);
+        const accPercent = totalHits > 0 ? ((successfulHits / totalHits) * 100).toFixed(1) : 100;
+        document.getElementById('accValue').innerText = accPercent;
+        document.getElementById('comboValue').innerText = combo;
+    }
+    
+    function drawCanvas(nowElapsed = 0) {
+        if(!ctx) return;
+        ctx.clearRect(0, 0, canvasElem.width, canvasElem.height);
+        const grad = ctx.createLinearGradient(0,0,canvasElem.width,canvasElem.height);
+        grad.addColorStop(0, '#141b2b');
+        grad.addColorStop(1, '#0e1322');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0,0,canvasElem.width,canvasElem.height);
+        
+        const cfg = difficulties[currentDifficulty];
+        for(let c of circles) {
+            const timeToHit = c.targetTime - nowElapsed;
+            let approachScale = 1.0;
+            if(timeToHit > 0) {
+                const leadTime = cfg.approachRate * 420;
+                if(leadTime > 0) {
+                    let t = Math.min(1, Math.max(0, (leadTime - timeToHit) / leadTime));
+                    approachScale = 0.4 + t * 1.2;
+                }
+            } else {
+                approachScale = 1.5;
+            }
+            const approachRadius = c.radius * approachScale;
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, approachRadius, 0, Math.PI*2);
+            ctx.strokeStyle = "#ffddff";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, c.radius-2, 0, Math.PI*2);
+            ctx.fillStyle = "#fe7fb5";
+            ctx.fill();
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, c.radius-6, 0, Math.PI*2);
+            ctx.fill();
+        }
+        
+        if(window.lastHitEffect && window.lastHitEffect.timer > 0) {
+            ctx.beginPath();
+            ctx.arc(window.lastHitEffect.x, window.lastHitEffect.y, 40, 0, Math.PI*2);
+            ctx.fillStyle = "#ffffffaa";
+            ctx.fill();
+            window.lastHitEffect.timer--;
+            if(window.lastHitEffect.timer <=0) window.lastHitEffect = null;
+        }
+        
+        if(combo >= 5) {
+            ctx.font = `bold 30px "Montserrat"`;
+            ctx.fillStyle = "#ffe6b3";
+            ctx.fillText(`${combo}x`, canvasElem.width-90, 70);
+        }
+        
+        const elapsed = performance.now() - gameStartTimestamp;
+        const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION_MS));
+        ctx.fillStyle = "#ff66aa90";
+        ctx.fillRect(20, canvasElem.height-28, (canvasElem.width-40) * prog, 12);
+        ctx.fillStyle = "#ffffff30";
+        ctx.fillRect(20, canvasElem.height-28, canvasElem.width-40, 12);
+        ctx.fillStyle = "#ffaaee";
+        ctx.fillRect(20, canvasElem.height-28, (canvasElem.width-40) * prog, 12);
+    }
+    
+    // Event binding
+    canvasElem.addEventListener('click', (e) => handleTap(e.clientX, e.clientY));
+    canvasElem.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        if(touch) handleTap(touch.clientX, touch.clientY);
+    });
+    
+    document.getElementById('resetGameBtn').addEventListener('click', () => {
+        if(gameLocked && !quizActive) return;
+        if(animationId) cancelAnimationFrame(animationId);
+        fullReset(true);
+    });
+    
+    document.getElementById('restartSameBtn').addEventListener('click', () => {
+        if(gameLocked && !quizActive) return;
+        if(animationId) cancelAnimationFrame(animationId);
+        fullReset(true);
+    });
+    
+    document.querySelectorAll('.diff-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            if(gameLocked && !quizActive) {
+                document.getElementById('gameStatusMsg').innerHTML = '❌ Complete questions first!';
+                return;
+            }
+            const newDiff = parseInt(btn.getAttribute('data-diff'));
+            if(!isNaN(newDiff) && newDiff !== currentDifficulty) {
+                currentDifficulty = newDiff;
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if(gameActive && !gameLocked) fullReset(true);
+            }
+        });
+    });
+    
+    // Initialize game with quiz
+    async function init() {
+        const questions = await loadQuestions();
+        // Select 3 random questions
+        const shuffled = [...questions];
+        for(let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        currentQuestions = shuffled.slice(0, 3);
+        showQuiz(currentQuestions);
+    }
+    
+    init();
+</script>
+</body>
+</html>
