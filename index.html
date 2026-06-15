@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! Style · Beautiful Drag Notes · Particle Effects</title>
+    <title>osu! · Standard · Sliders · Accuracy</title>
     <style>
         * {
             user-select: none;
@@ -12,7 +12,7 @@
         }
 
         body {
-            background: linear-gradient(145deg, #0a0f1e 0%, #0c1222 100%);
+            background: #0a0f1e;
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -101,6 +101,7 @@
             backdrop-filter: blur(8px);
             border: 1px solid #ff6699;
             pointer-events: none;
+            font-family: monospace;
         }
 
         .accuracy-warning {
@@ -117,6 +118,7 @@
             border: 1px solid #ffaa44;
             color: #ffaa44;
             pointer-events: none;
+            font-family: monospace;
         }
 
         .difficulty-indicator {
@@ -134,6 +136,8 @@
             border: 1px solid #ff88cc;
             color: #ff88cc;
             pointer-events: none;
+            font-family: monospace;
+            letter-spacing: 2px;
         }
 
         .game-container {
@@ -149,7 +153,6 @@
             display: block;
             margin: 0 auto;
             border-radius: 32px;
-            box-shadow: 0 20px 35px rgba(0,0,0,0.5);
             background: #11161f;
             width: 100%;
             height: auto;
@@ -189,6 +192,7 @@
             color: #f3e9c0;
             font-size: 1.3rem;
             font-weight: 800;
+            font-family: monospace;
         }
 
         .difficulty-bar {
@@ -264,18 +268,18 @@
         .floating-judgement {
             position: fixed;
             pointer-events: none;
-            font-size: 2rem;
+            font-size: 1.8rem;
             font-weight: bold;
             text-shadow: 0 0 10px rgba(0,0,0,0.8);
             z-index: 200;
             animation: floatUp 0.8s ease-out forwards;
             white-space: nowrap;
+            font-family: monospace;
         }
 
         @keyframes floatUp {
-            0% { opacity: 1; transform: translateY(0) scale(0.8); }
-            50% { opacity: 1; transform: translateY(-40px) scale(1.1); }
-            100% { opacity: 0; transform: translateY(-80px) scale(0.9); }
+            0% { opacity: 1; transform: translateY(0) scale(0.9); }
+            100% { opacity: 0; transform: translateY(-60px) scale(1.1); }
         }
 
         .death-overlay {
@@ -284,7 +288,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.95);
+            background: rgba(0, 0, 0, 0.97);
             z-index: 10000;
             display: flex;
             justify-content: center;
@@ -294,42 +298,35 @@
 
         .death-container {
             text-align: center;
-            background: linear-gradient(135deg, #2a1a2a, #1a0a1a);
+            background: #1a0a1a;
             padding: 50px;
-            border-radius: 60px;
-            border: 3px solid #ff0000;
-            box-shadow: 0 0 50px rgba(255, 0, 0, 0.5);
-            animation: shake 0.5s ease;
+            border-radius: 48px;
+            border: 2px solid #ff3366;
         }
 
         .death-title {
             font-size: 4rem;
             font-weight: 900;
-            color: #ff0000;
-            text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+            color: #ff3366;
             margin-bottom: 20px;
+            font-family: monospace;
         }
 
         .death-subtitle {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             color: #ff8888;
             margin-bottom: 30px;
         }
 
         .death-reload {
-            background: #ff0000;
+            background: #ff3366;
             color: white;
             border: none;
-            padding: 15px 40px;
-            font-size: 1.2rem;
+            padding: 12px 35px;
+            font-size: 1.1rem;
             border-radius: 60px;
             font-weight: bold;
             cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .death-reload:active {
-            transform: scale(0.95);
         }
 
         @keyframes fadeIn {
@@ -337,59 +334,53 @@
             to { opacity: 1; }
         }
 
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
-        }
-
         @media (max-width: 768px) {
             body { padding: 10px; }
-            .floating-judgement { font-size: 1.5rem; }
-            .death-title { font-size: 2.5rem; }
+            .floating-judgement { font-size: 1.2rem; }
+            .death-title { font-size: 2rem; }
         }
     </style>
 </head>
 <body>
-<div class="lives-display" id="livesDisplay">❤️ LIVES: 2</div>
-<div class="accuracy-warning" id="accuracyWarning">📊 ACC: 100%</div>
-<div class="difficulty-indicator" id="difficultyIndicator">⚔️ NORMAL ⚔️</div>
+<div class="lives-display" id="livesDisplay">LIVES: 2</div>
+<div class="accuracy-warning" id="accuracyWarning">ACC: 100%</div>
+<div class="difficulty-indicator" id="difficultyIndicator">NORMAL</div>
 
 <div class="game-container">
     <canvas id="gameCanvas" width="800" height="500"></canvas>
     
     <div class="info-panel">
         <div class="stats">
-            <div class="stat"><span>🎯 SCORE</span><span id="scoreValue">0</span></div>
-            <div class="stat"><span>💯 ACC</span><span id="accValue">100</span><span style="font-size:0.8rem">%</span></div>
-            <div class="stat"><span>⭐ COMBO</span><span id="comboValue">0</span></div>
+            <div class="stat"><span>SCORE</span><span id="scoreValue">0</span></div>
+            <div class="stat"><span>ACC</span><span id="accValue">100</span><span style="font-size:0.8rem">%</span></div>
+            <div class="stat"><span>COMBO</span><span id="comboValue">0</span></div>
         </div>
         <div class="difficulty-bar" id="difficultySelector">
-            <button class="diff-btn" data-diff="0">🍃 EASY</button>
-            <button class="diff-btn" data-diff="1">🔥 NORMAL</button>
-            <button class="diff-btn" data-diff="2">💀 HARD</button>
-            <button class="diff-btn" data-diff="3">🌋 INSANE</button>
+            <button class="diff-btn" data-diff="0">EASY</button>
+            <button class="diff-btn" data-diff="1">NORMAL</button>
+            <button class="diff-btn" data-diff="2">HARD</button>
+            <button class="diff-btn" data-diff="3">INSANE</button>
         </div>
     </div>
 
     <div class="action-area">
-        <button id="resetGameBtn">🔄 NEW GAME</button>
-        <button id="restartSameBtn">🎵 RESTART</button>
+        <button id="resetGameBtn">NEW GAME</button>
+        <button id="restartSameBtn">RESTART</button>
     </div>
     <div style="display: flex; justify-content: center;">
-        <div id="gameStatusMsg" class="result-message">✨ Answer 3 questions to start!</div>
+        <div id="gameStatusMsg" class="result-message">Answer 3 questions to start</div>
     </div>
     <div class="footer-meta">
-        🎧 TAP circles • HOLD & DRAG on rainbow sliders • Accuracy &lt;60% = DEATH
+        TAP circles • HOLD & FOLLOW sliders • ACCURACY &lt;60% = GAME OVER
     </div>
 </div>
 
 <script>
     const difficulties = [
-        { name: "EASY",   circleCount: 25, sliderCount: 4, approachTime: 1300, radius: 38, timingWindow: 1.3, color: "#88ff88" },
-        { name: "NORMAL", circleCount: 38, sliderCount: 7, approachTime: 1000, radius: 34, timingWindow: 1.0, color: "#ffaa66" },
-        { name: "HARD",   circleCount: 55, sliderCount: 11, approachTime: 700, radius: 30, timingWindow: 0.8, color: "#ff6666" },
-        { name: "INSANE", circleCount: 75, sliderCount: 16, approachTime: 500, radius: 27, timingWindow: 0.65, color: "#ff44ff" }
+        { name: "EASY",   circleCount: 25, sliderCount: 4, approachTime: 1300, radius: 38, timingWindow: 1.3 },
+        { name: "NORMAL", circleCount: 38, sliderCount: 7, approachTime: 1000, radius: 34, timingWindow: 1.0 },
+        { name: "HARD",   circleCount: 55, sliderCount: 11, approachTime: 700, radius: 30, timingWindow: 0.8 },
+        { name: "INSANE", circleCount: 75, sliderCount: 16, approachTime: 500, radius: 27, timingWindow: 0.65 }
     ];
     
     const TIMING = { perfect: 45, good: 90, ok: 160 };
@@ -401,7 +392,6 @@
     let activeCircles = [];
     let activeSliders = [];
     let currentDrag = null;
-    let particles = [];
     let score = 0, combo = 0, maxCombo = 0, totalHits = 0, misses = 0;
     let gameActive = false, gameStarted = false;
     let currentDifficulty = 1;
@@ -410,7 +400,6 @@
     let allNotes = [];
     let nextNoteIndex = 0;
     
-    let lives = 2;
     let quizActive = true, gameLocked = true;
     let questionBank = [];
     let deathTriggered = false;
@@ -420,41 +409,6 @@
     canvasElem.height = 500;
     ctx = canvasElem.getContext('2d');
     
-    class Particle {
-        constructor(x, y, color) {
-            this.x = x;
-            this.y = y;
-            this.vx = (Math.random() - 0.5) * 8;
-            this.vy = (Math.random() - 0.5) * 8 - 3;
-            this.life = 1;
-            this.color = color;
-            this.size = Math.random() * 4 + 2;
-        }
-        
-        update() {
-            this.x += this.vx;
-            this.y += this.vy;
-            this.vy += 0.2;
-            this.life -= 0.02;
-            return this.life > 0;
-        }
-        
-        draw() {
-            ctx.globalAlpha = this.life;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-            ctx.fillStyle = this.color;
-            ctx.fill();
-            ctx.globalAlpha = 1;
-        }
-    }
-    
-    function addParticles(x, y, color, count = 8) {
-        for (let i = 0; i < count; i++) {
-            particles.push(new Particle(x, y, color));
-        }
-    }
-    
     function showDeathScreen() {
         if (deathTriggered) return;
         deathTriggered = true;
@@ -463,9 +417,9 @@
         overlay.className = 'death-overlay';
         overlay.innerHTML = `
             <div class="death-container">
-                <div class="death-title">💀 GAME OVER 💀</div>
-                <div class="death-subtitle">Accuracy fell below 60%</div>
-                <button class="death-reload" id="deathReloadBtn">🔄 TRY AGAIN</button>
+                <div class="death-title">GAME OVER</div>
+                <div class="death-subtitle">accuracy below 60%</div>
+                <button class="death-reload" id="deathReloadBtn">RETRY</button>
             </div>
         `;
         document.body.appendChild(overlay);
@@ -478,16 +432,16 @@
         const div = document.createElement('div');
         div.className = 'floating-judgement';
         div.textContent = text;
-        div.style.left = (x - 50) + 'px';
-        div.style.top = (y - 50) + 'px';
+        div.style.left = (x - 40) + 'px';
+        div.style.top = (y - 40) + 'px';
         div.style.color = color;
         document.body.appendChild(div);
-        setTimeout(() => div.remove(), 800);
+        setTimeout(() => div.remove(), 700);
     }
     
     function updateAccuracy() {
         let acc = totalHits + misses === 0 ? 100 : (totalHits / (totalHits + misses)) * 100;
-        document.getElementById('accuracyWarning').innerHTML = `📊 ACC: ${acc.toFixed(1)}%`;
+        document.getElementById('accuracyWarning').innerHTML = `ACC: ${acc.toFixed(1)}%`;
         document.getElementById('accValue').innerText = acc.toFixed(1);
         
         if (acc < 60 && gameActive && gameStarted && totalHits + misses > 10 && !deathTriggered) {
@@ -504,14 +458,14 @@
         updateAccuracy();
     }
     
-    function generateBezierPath(startX, startY, endX, endY) {
+    function generateSliderPath(startX, startY, endX, endY) {
         const points = [];
-        const steps = 40;
+        const steps = 35;
         
-        const cp1x = startX + (endX - startX) * 0.2 + (Math.random() - 0.5) * 60;
-        const cp1y = startY + (endY - startY) * 0.3 + (Math.random() - 0.5) * 70;
-        const cp2x = startX + (endX - startX) * 0.8 + (Math.random() - 0.5) * 60;
-        const cp2y = startY + (endY - startY) * 0.7 + (Math.random() - 0.5) * 70;
+        const cp1x = startX + (endX - startX) * 0.25;
+        const cp1y = startY + (endY - startY) * 0.2;
+        const cp2x = startX + (endX - startX) * 0.75;
+        const cp2y = startY + (endY - startY) * 0.8;
         
         for (let i = 0; i <= steps; i++) {
             const t = i / steps;
@@ -555,12 +509,12 @@
             const startX = margin + Math.random() * (canvasElem.width - margin * 2);
             const startY = margin + Math.random() * (canvasElem.height - margin * 2);
             
-            let endX = startX + (Math.random() - 0.5) * 200;
-            let endY = startY + (Math.random() - 0.5) * 150;
+            let endX = startX + (Math.random() - 0.5) * 180;
+            let endY = startY + (Math.random() - 0.5) * 120;
             endX = Math.min(canvasElem.width - margin, Math.max(margin, endX));
             endY = Math.min(canvasElem.height - margin, Math.max(margin, endY));
             
-            const points = generateBezierPath(startX, startY, endX, endY);
+            const points = generateSliderPath(startX, startY, endX, endY);
             
             notes.push({
                 type: 'slider',
@@ -592,11 +546,11 @@
         let countdown = 3;
         const interval = setInterval(() => {
             if (countdown > 0) {
-                document.getElementById('gameStatusMsg').innerHTML = `🎯 ${countdown}...`;
+                document.getElementById('gameStatusMsg').innerHTML = `${countdown}...`;
                 countdown--;
             } else {
                 clearInterval(interval);
-                document.getElementById('gameStatusMsg').innerHTML = '🎵 GO!';
+                document.getElementById('gameStatusMsg').innerHTML = 'GO!';
                 gameStarted = true;
                 gameActive = true;
                 deathTriggered = false;
@@ -604,7 +558,6 @@
                 nextNoteIndex = 0;
                 activeCircles = [];
                 activeSliders = [];
-                particles = [];
                 score = 0; combo = 0; maxCombo = 0; totalHits = 0; misses = 0;
                 gameStartTime = performance.now();
                 updateUI();
@@ -650,7 +603,6 @@
                         activeSliders = activeSliders.filter(s => !s.hit && !s.completed);
                     }
                     
-                    particles = particles.filter(p => p.update());
                     draw();
                     animationId = requestAnimationFrame(update);
                 }
@@ -659,119 +611,65 @@
         }, 1000);
     }
     
-    function drawRainbowGradient(x1, y1, x2, y2, progress) {
-        const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
-        const hue = (Date.now() * 0.003) % 360;
-        gradient.addColorStop(0, `hsl(${hue}, 100%, 60%)`);
-        gradient.addColorStop(0.3, `hsl(${(hue + 80) % 360}, 100%, 55%)`);
-        gradient.addColorStop(0.6, `hsl(${(hue + 160) % 360}, 100%, 60%)`);
-        gradient.addColorStop(1, `hsl(${(hue + 240) % 360}, 100%, 55%)`);
-        return gradient;
-    }
-    
     function draw() {
         if (!ctx) return;
         ctx.clearRect(0, 0, canvasElem.width, canvasElem.height);
         
-        // Animated background
-        const grad = ctx.createLinearGradient(0, 0, canvasElem.width, canvasElem.height);
-        grad.addColorStop(0, '#141b2b');
-        grad.addColorStop(1, '#0e1322');
-        ctx.fillStyle = grad;
+        ctx.fillStyle = '#11161f';
         ctx.fillRect(0, 0, canvasElem.width, canvasElem.height);
-        
-        // Draw stars
-        for (let i = 0; i < 100; i++) {
-            if (i % 2 === 0) continue;
-            ctx.fillStyle = `rgba(255,255,255,${Math.sin(Date.now() * 0.001 + i) * 0.3 + 0.2})`;
-            ctx.fillRect((i * 131) % canvasElem.width, (i * 253) % canvasElem.height, 1, 1);
-        }
         
         const now = performance.now();
         const elapsed = now - gameStartTime;
         
-        // Draw sliders with rainbow effects
+        // Draw sliders
         for (const s of activeSliders) {
             const timeToHit = s.time - elapsed;
             const alpha = Math.min(1, Math.max(0.4, 1 - (s.approachTime - timeToHit) / s.approachTime * 0.5));
-            const isDragging = currentDrag && currentDrag.id === s.id;
             
-            // Glow effect
-            ctx.shadowBlur = isDragging ? 25 : 15;
-            ctx.shadowColor = isDragging ? '#ff88ff' : '#ff44aa';
-            
-            // Rainbow path
+            // Slider body
             ctx.beginPath();
             ctx.moveTo(s.points[0].x, s.points[0].y);
             for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
-            
-            const rainbowGrad = drawRainbowGradient(s.startX, s.startY, s.endX, s.endY, 0);
-            ctx.strokeStyle = rainbowGrad;
-            ctx.lineWidth = isDragging ? 14 : 10;
+            ctx.strokeStyle = `rgba(200, 120, 180, ${alpha})`;
+            ctx.lineWidth = 6;
             ctx.stroke();
             
-            // Glow dots along path
-            ctx.shadowBlur = 8;
-            for (let i = 0; i < s.points.length; i += 2) {
-                ctx.beginPath();
-                ctx.arc(s.points[i].x, s.points[i].y, 3, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 200, 255, ${alpha * 0.9})`;
-                ctx.fill();
-            }
-            
-            // Start circle with ripple effect
-            const pulse = isDragging ? 1 + Math.sin(Date.now() * 0.01) * 0.2 : 1;
+            // Slider border
             ctx.beginPath();
-            ctx.arc(s.startX, s.startY, (s.radius + 2) * pulse, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 80, 160, ${alpha})`;
+            ctx.moveTo(s.points[0].x, s.points[0].y);
+            for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
+            ctx.strokeStyle = `rgba(255, 180, 220, ${alpha * 0.8})`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Start circle
+            ctx.beginPath();
+            ctx.arc(s.startX, s.startY, s.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(200, 100, 160, ${alpha})`;
             ctx.fill();
             ctx.beginPath();
             ctx.arc(s.startX, s.startY, s.radius - 3, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 200, 240, ${alpha})`;
+            ctx.fillStyle = `rgba(255, 200, 220, ${alpha})`;
             ctx.fill();
             
-            // Start icon
-            ctx.font = `${s.radius - 4}px "Segoe UI"`;
-            ctx.fillStyle = `white`;
-            ctx.fillText("▶", s.startX - 6, s.startY + 7);
-            
-            // End circle (diamond shape)
+            // End circle
             ctx.beginPath();
-            ctx.moveTo(s.endX, s.endY - s.radius + 2);
-            ctx.lineTo(s.endX + s.radius - 4, s.endY);
-            ctx.lineTo(s.endX, s.endY + s.radius - 2);
-            ctx.lineTo(s.endX - s.radius + 4, s.endY);
-            ctx.closePath();
-            ctx.fillStyle = `rgba(255, 150, 200, ${alpha})`;
+            ctx.arc(s.endX, s.endY, s.radius - 2, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(200, 120, 180, ${alpha})`;
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(s.endX, s.endY, s.radius - 6, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 220, 240, ${alpha})`;
             ctx.fill();
             
-            // Progress trail with particles
-            if (isDragging && s.dragProgress > 0) {
+            // Progress highlight
+            if (currentDrag && currentDrag.id === s.id && s.dragProgress > 0) {
                 const progressIndex = Math.floor(s.dragProgress * (s.points.length - 1));
                 for (let i = 0; i <= progressIndex; i++) {
                     ctx.beginPath();
-                    ctx.arc(s.points[i].x, s.points[i].y, s.radius - 2, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 255, 100, 0.6)`;
+                    ctx.arc(s.points[i].x, s.points[i].y, s.radius - 1, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 220, 120, 0.6)`;
                     ctx.fill();
-                }
-                
-                // Orb following finger
-                const trailIndex = Math.min(progressIndex, s.points.length - 1);
-                if (trailIndex >= 0) {
-                    ctx.shadowBlur = 20;
-                    ctx.beginPath();
-                    ctx.arc(s.points[trailIndex].x, s.points[trailIndex].y, s.radius + 5, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 255, 180, 0.8)`;
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(s.points[trailIndex].x, s.points[trailIndex].y, s.radius, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 200, 50, 1)`;
-                    ctx.fill();
-                    
-                    // Add particles on drag
-                    if (Math.random() < 0.3) {
-                        addParticles(s.points[trailIndex].x, s.points[trailIndex].y, "#ffaa44", 3);
-                    }
                 }
             }
         }
@@ -786,53 +684,43 @@
             }
             
             const radius = c.radius * scale;
-            ctx.shadowBlur = 12;
+            
+            // Approach circle
             ctx.beginPath();
             ctx.arc(c.x, c.y, radius, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(255, 200, 255, ${Math.min(1, 1 - timeToHit / c.approachTime)})`;
+            ctx.strokeStyle = `rgba(255, 180, 220, ${Math.min(1, 1 - timeToHit / c.approachTime)})`;
             ctx.lineWidth = 3;
             ctx.stroke();
             
+            // Hit circle
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.radius - 2, 0, Math.PI * 2);
-            const grad = ctx.createRadialGradient(c.x - 5, c.y - 5, 3, c.x, c.y, c.radius);
-            grad.addColorStop(0, "#ff88cc");
-            grad.addColorStop(1, "#ff44aa");
-            ctx.fillStyle = grad;
+            ctx.fillStyle = "#ff66aa";
             ctx.fill();
             
+            // Center
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.radius - 8, 0, Math.PI * 2);
             ctx.fillStyle = "#ffffff";
             ctx.fill();
-            ctx.shadowBlur = 0;
         }
-        
-        // Draw particles
-        for (const p of particles) p.draw();
         
         // Combo display
         if (combo >= 5 && gameStarted && gameActive && !deathTriggered) {
-            ctx.font = `bold 42px "Montserrat"`;
-            ctx.fillStyle = `hsl(${Math.sin(Date.now() * 0.005) * 20 + 40}, 100%, 65%)`;
-            ctx.shadowBlur = 15;
+            ctx.font = `bold 36px "Courier New"`;
+            ctx.fillStyle = "#ffcc66";
+            ctx.shadowBlur = 8;
             ctx.shadowColor = "#ff66aa";
-            ctx.fillText(`${combo}x`, canvasElem.width - 100, 75);
+            ctx.fillText(`${combo}x`, canvasElem.width - 85, 70);
             ctx.shadowBlur = 0;
         }
         
-        // Progress bar with glow
+        // Progress bar
         const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION));
         ctx.fillStyle = "#ff66aa30";
-        ctx.fillRect(20, canvasElem.height - 25, canvasElem.width - 40, 10);
-        
-        const progGrad = ctx.createLinearGradient(20, canvasElem.height - 25, 20 + (canvasElem.width - 40) * prog, canvasElem.height - 25);
-        progGrad.addColorStop(0, "#ff66aa");
-        progGrad.addColorStop(1, "#ff44ff");
-        ctx.fillStyle = progGrad;
-        ctx.fillRect(20, canvasElem.height - 25, (canvasElem.width - 40) * prog, 10);
-        
-        ctx.shadowBlur = 0;
+        ctx.fillRect(20, canvasElem.height - 25, canvasElem.width - 40, 8);
+        ctx.fillStyle = "#ff66aa";
+        ctx.fillRect(20, canvasElem.height - 25, (canvasElem.width - 40) * prog, 8);
     }
     
     function handleTap(clientX, clientY) {
@@ -845,37 +733,32 @@
         const canvasY = (clientY - rect.top) * scaleY;
         const elapsed = performance.now() - gameStartTime;
         
-        // Check circles
+        // Hit circles
         for (let i = 0; i < activeCircles.length; i++) {
             const c = activeCircles[i];
             const dx = c.x - canvasX;
             const dy = c.y - canvasY;
             if (Math.hypot(dx, dy) <= c.radius * 1.5) {
                 const timeDiff = Math.abs(elapsed - c.time);
-                const timing = TIMING;
                 const scale = difficulties[currentDifficulty].timingWindow;
                 
                 let points, judgement, color;
-                if (timeDiff <= timing.perfect * scale) {
+                if (timeDiff <= TIMING.perfect * scale) {
                     points = BASE_SCORE;
-                    judgement = "PERFECT!";
+                    judgement = "PERFECT";
                     color = "#ffd700";
-                    addParticles(c.x, c.y, "#ffd700", 12);
-                } else if (timeDiff <= timing.good * scale) {
+                } else if (timeDiff <= TIMING.good * scale) {
                     points = Math.floor(BASE_SCORE * 0.85);
-                    judgement = "GOOD!";
+                    judgement = "GOOD";
                     color = "#88ff88";
-                    addParticles(c.x, c.y, "#88ff88", 8);
-                } else if (timeDiff <= timing.ok * scale) {
+                } else if (timeDiff <= TIMING.ok * scale) {
                     points = Math.floor(BASE_SCORE * 0.6);
                     judgement = "OK";
                     color = "#88aaff";
-                    addParticles(c.x, c.y, "#88aaff", 5);
                 } else {
                     points = Math.floor(BASE_SCORE * 0.3);
                     judgement = "HIT";
                     color = "#ffaa88";
-                    addParticles(c.x, c.y, "#ffaa88", 4);
                 }
                 
                 score += points + Math.floor(combo * 3);
@@ -889,7 +772,7 @@
             }
         }
         
-        // Check sliders
+        // Start sliders
         for (let i = 0; i < activeSliders.length; i++) {
             const s = activeSliders[i];
             const dx = s.startX - canvasX;
@@ -901,8 +784,7 @@
                     currentDrag = s;
                     s.dragProgress = 0;
                     s.hit = true;
-                    addParticles(s.startX, s.startY, "#ff88ff", 15);
-                    showMessage("DRAG!", clientX, clientY, "#ff88ff");
+                    showMessage("SLIDER", clientX, clientY, "#ff88ff");
                     return;
                 }
             }
@@ -913,7 +795,6 @@
         misses++;
         updateUI();
         showMessage("MISS", clientX, clientY, "#ff6666");
-        addParticles(canvasX, canvasY, "#ff6666", 6);
     }
     
     function handleDrag(clientX, clientY) {
@@ -946,8 +827,7 @@
                 if (combo > maxCombo) maxCombo = combo;
                 totalHits++;
                 updateUI();
-                addParticles(currentDrag.endX, currentDrag.endY, "#ff88ff", 20);
-                showMessage("SLIDER END", clientX, clientY, "#ff88ff");
+                showMessage("SLIDER END", clientX, clientY, "#88ff88");
                 
                 const index = activeSliders.findIndex(s => s.id === currentDrag.id);
                 if (index !== -1) activeSliders.splice(index, 1);
@@ -962,7 +842,6 @@
                 combo = 0;
                 misses++;
                 updateUI();
-                addParticles(currentDrag.startX, currentDrag.startY, "#ff6666", 10);
                 showMessage("SLIDER FAIL", currentDrag.startX, currentDrag.startY, "#ff6666");
                 const index = activeSliders.findIndex(s => s.id === currentDrag.id);
                 if (index !== -1) activeSliders.splice(index, 1);
@@ -971,7 +850,7 @@
         }
     }
     
-    // Event handlers
+    // Events
     canvasElem.addEventListener('touchstart', (e) => { e.preventDefault(); const t = e.touches[0]; handleTap(t.clientX, t.clientY); });
     canvasElem.addEventListener('touchmove', (e) => { e.preventDefault(); const t = e.touches[0]; handleDrag(t.clientX, t.clientY); });
     canvasElem.addEventListener('touchend', (e) => { e.preventDefault(); handleDragEnd(); });
@@ -990,9 +869,7 @@
                 currentDifficulty = newDiff;
                 document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                document.getElementById('difficultyIndicator').innerHTML = `⚔️ ${difficulties[currentDifficulty].name} ⚔️`;
-                document.getElementById('difficultyIndicator').style.borderColor = difficulties[currentDifficulty].color;
-                document.getElementById('difficultyIndicator').style.color = difficulties[currentDifficulty].color;
+                document.getElementById('difficultyIndicator').innerHTML = difficulties[currentDifficulty].name;
                 if (gameStarted && !gameLocked && !quizActive && !deathTriggered) location.reload();
             }
         };
@@ -1032,7 +909,7 @@
                 return;
             }
             const q = questions[qIndex];
-            overlay.innerHTML = `<div class="quiz-container"><div class="progress-badge">📚 QUESTION ${qIndex+1}/3</div><div class="progress-badge" style="color:#88ff88">✨ Infinite attempts!</div><div class="quiz-question">${q.question}</div><div class="quiz-options">${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${opt}</div>`).join('')}</div></div>`;
+            overlay.innerHTML = `<div class="quiz-container"><div class="progress-badge">QUESTION ${qIndex+1}/3</div><div class="progress-badge" style="color:#88ff88">INFINITE ATTEMPTS</div><div class="quiz-question">${q.question}</div><div class="quiz-options">${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${opt}</div>`).join('')}</div></div>`;
             
             document.querySelectorAll('.quiz-opt').forEach(btn => {
                 btn.onclick = () => {
@@ -1042,7 +919,7 @@
                     } else {
                         const msg = document.createElement('div');
                         msg.style.cssText = 'color:#ff8888;text-align:center;margin-top:15px';
-                        msg.innerText = '❌ Try again!';
+                        msg.innerText = 'WRONG - TRY AGAIN';
                         overlay.querySelector('.quiz-container').appendChild(msg);
                         setTimeout(() => msg.remove(), 1200);
                     }
@@ -1054,7 +931,6 @@
         showQuestion();
     }
     
-    // Initialize
     document.querySelectorAll('.diff-btn').forEach(btn => {
         if (parseInt(btn.dataset.diff) === currentDifficulty) btn.classList.add('active');
         btn.style.pointerEvents = 'none';
