@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! Style · Click Anytime · Fixed Revive</title>
+    <title>osu! Style · Floating Judgement · Fixed Accuracy</title>
     <style>
         * {
             user-select: none;
@@ -256,12 +256,40 @@
             margin-top: 12px;
         }
 
+        /* Floating text animation */
+        .floating-judgement {
+            position: fixed;
+            pointer-events: none;
+            font-size: 2rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+            z-index: 200;
+            animation: floatUp 0.8s ease-out forwards;
+            white-space: nowrap;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(0.8);
+            }
+            50% {
+                opacity: 1;
+                transform: translateY(-40px) scale(1.1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-80px) scale(0.9);
+            }
+        }
+
         @media (max-width: 768px) {
             body { padding: 10px; }
             .stat span:last-child { font-size: 1.1rem; }
             .diff-btn { font-size: 0.75rem; padding: 4px 10px; }
             .quiz-question { font-size: 1.2rem; }
             .quiz-opt { padding: 12px 16px; font-size: 0.9rem; }
+            .floating-judgement { font-size: 1.5rem; }
         }
     </style>
 </head>
@@ -294,7 +322,7 @@
         <div id="gameStatusMsg" class="result-message">✨ Answer 3 questions to start!</div>
     </div>
     <div class="footer-meta">
-        🎧 Click ANYTIME on circles! Better timing = more points • Accuracy &lt;50% = lose life (once per drop)
+        🎧 Click circles ANYTIME • Perfect timing = more points • Accuracy only drops on MISS
     </div>
 </div>
 
@@ -315,7 +343,7 @@
     
     let canvas, ctx;
     let circles = [];
-    let score = 0, combo = 0, maxCombo = 0, totalHits = 0, successfulHits = 0;
+    let score = 0, combo = 0, maxCombo = 0, totalHits = 0, misses = 0;
     let gameActive = false;
     let currentDifficulty = 0;
     let gameStartTimestamp = 0;
@@ -332,12 +360,25 @@
     let questionBank = [];
     let quizActive = true;
     let gameLocked = true;
-    let pendingLifeLoss = false; // Track if we're already processing a life loss
-    let lifeLossCooldown = false; // Cooldown to prevent spam
-    let lastAccuracyCheck = 0;
+    let pendingLifeLoss = false;
+    let lifeLossCooldown = false;
     
     const canvasElem = document.getElementById('gameCanvas');
     ctx = canvasElem.getContext('2d');
+    
+    function showFloatingJudgement(text, x, y, color) {
+        const div = document.createElement('div');
+        div.className = 'floating-judgement';
+        div.textContent = text;
+        div.style.left = (x - 50) + 'px';
+        div.style.top = (y - 50) + 'px';
+        div.style.color = color;
+        document.body.appendChild(div);
+        
+        setTimeout(() => {
+            if (div && div.parentNode) div.remove();
+        }, 800);
+    }
     
     function resizeCanvas() {
         const maxWidth = Math.min(800, window.innerWidth - 40);
@@ -360,9 +401,7 @@
                 { question: "Which planet is known as the Red Planet?", options: ["Mars", "Jupiter", "Venus", "Saturn"], correct: 0 },
                 { question: "What is 2 + 2?", options: ["3", "4", "5", "6"], correct: 1 },
                 { question: "Who painted the Mona Lisa?", options: ["Van Gogh", "Picasso", "Da Vinci", "Rembrandt"], correct: 2 },
-                { question: "What is the largest ocean?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 },
-                { question: "What is the square root of 64?", options: ["6", "7", "8", "9"], correct: 2 },
-                { question: "Which animal is known as the 'King of the Jungle'?", options: ["Elephant", "Tiger", "Lion", "Gorilla"], correct: 2 }
+                { question: "What is the largest ocean?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 }
             ];
             return questionBank;
         }
@@ -504,29 +543,38 @@
         }, 1000);
     }
     
+    function calculateAccuracy() {
+        if (totalHits + misses === 0) return 100;
+        // Accuracy = (totalHits / (totalHits + misses)) * 100
+        // Hits count toward accuracy, misses bring it down
+        return (totalHits / (totalHits + misses)) * 100;
+    }
+    
+    function updateAccuracyDisplay() {
+        const accuracy = calculateAccuracy();
+        document.getElementById('accuracyWarning').innerHTML = `📊 ACC: ${accuracy.toFixed(1)}%`;
+        document.getElementById('accValue').innerText = accuracy.toFixed(1);
+        return accuracy;
+    }
+    
     function checkAccuracyAndLives() {
         const now = Date.now();
         
-        // Don't check if conditions not met
         if (!gameActive || gameLocked || gamePausedForRespawn || !gameStarted) return;
         if (pendingLifeLoss || lifeLossCooldown) return;
-        if (totalHits < 15) return; // Need at least 15 hits to check
+        if (totalHits + misses < 15) return;
         
-        const accuracy = totalHits > 0 ? (successfulHits / totalHits) * 100 : 100;
-        document.getElementById('accuracyWarning').innerHTML = `📊 ACC: ${accuracy.toFixed(1)}%`;
-        document.getElementById('accValue').innerText = accuracy.toFixed(1);
+        const accuracy = calculateAccuracy();
         
-        // Check if accuracy dropped below 50%
         if (accuracy < 50 && lives > 0) {
-            console.log("Accuracy below 50%! Triggering life loss");
             pendingLifeLoss = true;
             
             lives--;
             updateLivesDisplay();
             document.getElementById('gameStatusMsg').innerHTML = `⚠️ Accuracy below 50%! Lost 1 life (${lives} left)`;
+            showFloatingJudgement("LOST LIFE", canvasElem.width/2, canvasElem.height/2, "#ff6666");
             
             if (lives >= 0) {
-                // Pause game
                 gameActive = false;
                 gamePausedForRespawn = true;
                 
@@ -534,26 +582,26 @@
                     gamePausedForRespawn = false;
                     
                     if (success) {
-                        // Revive successful
                         lives++;
                         updateLivesDisplay();
                         gameActive = true;
                         pendingLifeLoss = false;
-                        lifeLossCooldown = true; // Set cooldown
+                        lifeLossCooldown = true;
                         setTimeout(() => {
                             lifeLossCooldown = false;
-                        }, 5000); // 5 second cooldown before another life loss
+                        }, 5000);
                         document.getElementById('gameStatusMsg').innerHTML = '✨ Revived! +1 life!';
+                        showFloatingJudgement("REVIVED!", canvasElem.width/2, canvasElem.height/2, "#88ff88");
                         setTimeout(() => {
                             if(gameActive && gameStarted) document.getElementById('gameStatusMsg').innerHTML = '🎧 Keep tapping!';
                         }, 2000);
                     } else {
-                        // Failed revive - game over
                         gameActive = false;
                         gameLocked = true;
                         gameStarted = false;
                         document.getElementById('gameStatusMsg').innerHTML = '💀 GAME OVER - Failed to revive! 💀';
                         document.getElementById('livesDisplay').innerHTML = `❤️ LIVES: 0`;
+                        showFloatingJudgement("GAME OVER", canvasElem.width/2, canvasElem.height/2, "#ff4444");
                     }
                 });
             } else {
@@ -619,7 +667,7 @@
         combo = 0;
         maxCombo = 0;
         totalHits = 0;
-        successfulHits = 0;
+        misses = 0;
         updateUIStats();
         
         beatTimestamps = generateBeatmap(currentDifficulty);
@@ -659,7 +707,6 @@
             const elapsed = now - gameStartTimestamp;
             
             if(gameActive && !gamePausedForRespawn && gameStarted) {
-                // Spawn notes
                 if(pendingNotes && nextSpawnIdx < pendingNotes.length) {
                     while(nextSpawnIdx < pendingNotes.length) {
                         const note = pendingNotes[nextSpawnIdx];
@@ -684,7 +731,6 @@
                     }
                 }
                 
-                // Check misses (only if circle completely disappeared)
                 for(let i=0; i<circles.length; i++) {
                     const c = circles[i];
                     if(!c.hit) {
@@ -692,8 +738,9 @@
                         if(missDelta > HIT_WINDOW_OK + 100) {
                             c.hit = true;
                             combo = 0;
-                            totalHits++;
+                            misses++;
                             updateUIStats();
+                            checkAccuracyAndLives();
                         }
                     }
                 }
@@ -725,8 +772,8 @@
         if(!gameActive) return;
         gameActive = false;
         gameStarted = false;
-        const acc = totalHits > 0 ? ((successfulHits / totalHits) * 100).toFixed(1) : 100;
-        document.getElementById('gameStatusMsg').innerHTML = `🏆 CLEAR! Score: ${score} | Acc: ${acc}% | Max Combo: ${maxCombo} 🎉`;
+        const accuracy = calculateAccuracy();
+        document.getElementById('gameStatusMsg').innerHTML = `🏆 CLEAR! Score: ${score} | Acc: ${accuracy.toFixed(1)}% | Max Combo: ${maxCombo} 🎉`;
     }
     
     function handleTap(clientX, clientY) {
@@ -746,7 +793,6 @@
         
         const elapsedGame = performance.now() - gameStartTimestamp;
         
-        // Find closest circle by position (any visible circle)
         let closestCircle = null;
         let minDistance = 80;
         
@@ -756,7 +802,6 @@
             const dx = c.x - canvasX;
             const dy = c.y - canvasY;
             const dist = Math.hypot(dx, dy);
-            // Hit radius is larger - can click even when circle is big
             const hitRadius = c.radius * 1.8;
             if(dist <= hitRadius) {
                 if(!closestCircle || dist < minDistance) {
@@ -768,40 +813,41 @@
         
         if(closestCircle) {
             const timeDiff = Math.abs(elapsedGame - closestCircle.targetTime);
-            let points, accuracy;
-            let judgement = "";
+            let points, judgement, color;
             
-            // Score based on timing (more accurate = more points)
             if (timeDiff <= HIT_WINDOW_PERFECT) {
                 points = BASE_SCORE;
-                accuracy = 1.0;
-                judgement = "🔥 PERFECT!";
+                judgement = "PERFECT!";
+                color = "#ffd700";
             } else if (timeDiff <= HIT_WINDOW_GOOD) {
                 points = Math.floor(BASE_SCORE * 0.85);
-                accuracy = 0.85;
-                judgement = "👍 GOOD!";
+                judgement = "GOOD!";
+                color = "#88ff88";
             } else if (timeDiff <= HIT_WINDOW_OK) {
                 points = Math.floor(BASE_SCORE * 0.6);
-                accuracy = 0.6;
-                judgement = "👌 OK!";
+                judgement = "OK";
+                color = "#88aaff";
             } else {
-                // Late hit but still counts
                 points = Math.floor(BASE_SCORE * 0.3);
-                accuracy = 0.3;
-                judgement = "⚠️ LATE!";
+                judgement = "HIT";
+                color = "#ffaa88";
             }
             
-            // Combo bonus
             let finalAdd = points + Math.floor(combo * 3);
             score += finalAdd;
             combo++;
             if(combo > maxCombo) maxCombo = combo;
-            successfulHits++;
             totalHits++;
             closestCircle.hit = true;
             
             updateUIStats();
-            checkAccuracyAndLives(); // Check after each hit
+            updateAccuracyDisplay();
+            checkAccuracyAndLives();
+            
+            // Get screen position for floating text
+            const screenX = rect.left + (closestCircle.x / scaleX);
+            const screenY = rect.top + (closestCircle.y / scaleY);
+            showFloatingJudgement(judgement, screenX, screenY, color);
             
             window.lastHitEffect = { x: closestCircle.x, y: closestCircle.y, timer: 8 };
             document.getElementById('gameStatusMsg').innerHTML = judgement;
@@ -809,11 +855,14 @@
                 if(gameActive && !gamePausedForRespawn && gameStarted) document.getElementById('gameStatusMsg').innerHTML = `🎧 Keep tapping!`;
             }, 200);
         } else {
-            // Miss
             combo = 0;
-            totalHits++;
+            misses++;
             updateUIStats();
+            updateAccuracyDisplay();
             checkAccuracyAndLives();
+            
+            const rect2 = canvasElem.getBoundingClientRect();
+            showFloatingJudgement("MISS", clientX, clientY, "#ff6666");
             document.getElementById('gameStatusMsg').innerHTML = "❌ MISS...";
             setTimeout(()=>{
                 if(gameActive && !gamePausedForRespawn && gameStarted) document.getElementById('gameStatusMsg').innerHTML = `🎧 Keep tapping!`;
@@ -824,8 +873,8 @@
     
     function updateUIStats() {
         document.getElementById('scoreValue').innerText = Math.floor(score);
-        const accPercent = totalHits > 0 ? ((successfulHits / totalHits) * 100).toFixed(1) : 100;
-        document.getElementById('accValue').innerText = accPercent;
+        const accuracy = calculateAccuracy();
+        document.getElementById('accValue').innerText = accuracy.toFixed(1);
         document.getElementById('comboValue').innerText = combo;
     }
     
@@ -833,16 +882,13 @@
         if(!ctx) return;
         ctx.clearRect(0, 0, canvasElem.width, canvasElem.height);
         
-        // Background
         const grad = ctx.createLinearGradient(0,0,canvasElem.width,canvasElem.height);
         grad.addColorStop(0, '#141b2b');
         grad.addColorStop(1, '#0e1322');
         ctx.fillStyle = grad;
         ctx.fillRect(0,0,canvasElem.width,canvasElem.height);
         
-        // Draw all circles
         for(let c of circles) {
-            // Calculate approach circle scale (SHRINKS from large to small)
             const timeUntilHit = c.targetTime - nowElapsed;
             let approachScale;
             
@@ -855,14 +901,12 @@
             
             const approachRadius = c.radius * approachScale;
             
-            // Draw approach ring
             ctx.beginPath();
             ctx.arc(c.x, c.y, approachRadius, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255, 200, 255, ${Math.min(1, 1 - (timeUntilHit / c.approachTime) * 0.5)})`;
             ctx.lineWidth = 4;
             ctx.stroke();
             
-            // Draw inner circle
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.radius - 2, 0, Math.PI * 2);
             ctx.fillStyle = "#fe7fb5";
@@ -870,7 +914,6 @@
             ctx.shadowBlur = 8;
             ctx.shadowColor = "#ff66aa";
             
-            // Draw center
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.radius - 8, 0, Math.PI * 2);
             ctx.fillStyle = "#ffffff";
@@ -882,7 +925,6 @@
             ctx.fillText("●", c.x - 7, c.y + 6);
         }
         
-        // Hit flash effect
         if(window.lastHitEffect && window.lastHitEffect.timer > 0) {
             ctx.beginPath();
             ctx.arc(window.lastHitEffect.x, window.lastHitEffect.y, 50, 0, Math.PI*2);
@@ -892,7 +934,6 @@
             if(window.lastHitEffect.timer <=0) window.lastHitEffect = null;
         }
         
-        // Combo display
         if(combo >= 5 && gameStarted && gameActive) {
             ctx.font = `bold 32px "Montserrat"`;
             ctx.fillStyle = "#ffe6b3";
@@ -902,7 +943,6 @@
             ctx.shadowBlur = 0;
         }
         
-        // Ready text
         if (!gameStarted && !gameLocked) {
             ctx.font = `bold 36px "Montserrat"`;
             ctx.fillStyle = "#ffdd99";
@@ -913,7 +953,6 @@
             ctx.shadowBlur = 0;
         }
         
-        // Progress bar
         const elapsed = performance.now() - gameStartTimestamp;
         const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION_MS));
         ctx.fillStyle = "#ff66aa90";
@@ -924,7 +963,6 @@
         ctx.fillRect(20, canvasElem.height - 25, (canvasElem.width - 40) * prog, 10);
     }
     
-    // Event handling
     function handleTapEvent(e) {
         e.preventDefault();
         let clientX, clientY;
@@ -960,7 +998,6 @@
         }
     });
     
-    // Difficulty selection
     document.querySelectorAll('.diff-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
