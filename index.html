@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! Style · Fixed Accuracy · Proper Restart</title>
+    <title>osu! Style · TRUE Difficulty · Insane Mode</title>
     <style>
         * {
             user-select: none;
@@ -123,6 +123,25 @@
             border: 1px solid #ffaa44;
             color: #ffaa44;
             pointer-events: none;
+        }
+
+        .difficulty-indicator {
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 6px 20px;
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: 1rem;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+            border: 1px solid #ff88cc;
+            color: #ff88cc;
+            pointer-events: none;
+            font-family: monospace;
+            letter-spacing: 2px;
         }
 
         .game-container {
@@ -289,12 +308,14 @@
             .quiz-question { font-size: 1.2rem; }
             .quiz-opt { padding: 12px 16px; font-size: 0.9rem; }
             .floating-judgement { font-size: 1.5rem; }
+            .difficulty-indicator { font-size: 0.75rem; top: 60px; }
         }
     </style>
 </head>
 <body>
 <div class="lives-display" id="livesDisplay">❤️ LIVES: 2</div>
 <div class="accuracy-warning" id="accuracyWarning">📊 ACC: 100%</div>
+<div class="difficulty-indicator" id="difficultyIndicator">⚔️ NORMAL ⚔️</div>
 
 <div class="game-container">
     <canvas id="gameCanvas" width="800" height="500" style="width:100%; height:auto; max-width:800px; aspect-ratio:800/500"></canvas>
@@ -308,8 +329,8 @@
         <div class="difficulty-bar" id="difficultySelector">
             <button class="diff-btn" data-diff="0">🍃 EASY</button>
             <button class="diff-btn" data-diff="1">🔥 NORMAL</button>
-            <button class="diff-btn" data-diff="2">⚡ HARD</button>
-            <button class="diff-btn" data-diff="3">💀 INSANE</button>
+            <button class="diff-btn" data-diff="2">💀 HARD</button>
+            <button class="diff-btn" data-diff="3">🌋 INSANE</button>
         </div>
     </div>
 
@@ -321,21 +342,51 @@
         <div id="gameStatusMsg" class="result-message">✨ Answer 3 questions to start!</div>
     </div>
     <div class="footer-meta">
-        🎧 Click circles ANYTIME • Perfect timing = more points • Accuracy only drops on MISS
+        🎧 HARD = 2x notes, INSANE = 3x notes + super fast approach • Accuracy only drops on MISS
     </div>
 </div>
 
 <script>
+    // DRAMATICALLY SCALED DIFFICULTIES
     const difficulties = [
-        { name: "EASY",   noteCount: 30,  approachTime: 1200, radius: 38 },
-        { name: "NORMAL", noteCount: 40,  approachTime: 1000, radius: 35 },
-        { name: "HARD",   noteCount: 55,  approachTime: 850,  radius: 32 },
-        { name: "INSANE", noteCount: 70,  approachTime: 700,  radius: 30 }
+        { 
+            name: "EASY",   
+            noteCount: 28,      // Slow pace
+            approachTime: 1400, // Very slow approach (1.4 seconds)
+            radius: 40,         // Bigger circles
+            timingWindow: 1.2,  // More forgiving
+            color: "#88ff88"
+        },
+        { 
+            name: "NORMAL", 
+            noteCount: 45,      // Moderate
+            approachTime: 1000, // Normal speed
+            radius: 35,
+            timingWindow: 1.0,
+            color: "#ffaa66"
+        },
+        { 
+            name: "HARD",   
+            noteCount: 75,      // 2.6x more notes than Easy!
+            approachTime: 650,  // Fast approach (0.65 seconds)
+            radius: 30,         // Smaller circles
+            timingWindow: 0.8,  // Less forgiving
+            color: "#ff6666"
+        },
+        { 
+            name: "INSANE", 
+            noteCount: 105,     // 3.75x more notes than Easy! DENSE!
+            approachTime: 450,  // EXTREMELY FAST (0.45 seconds to react!)
+            radius: 26,         // Tiny circles
+            timingWindow: 0.65, // Very strict timing
+            color: "#ff44ff"
+        }
     ];
     
-    const HIT_WINDOW_PERFECT = 50;
-    const HIT_WINDOW_GOOD = 100;
-    const HIT_WINDOW_OK = 180;
+    // Timing windows scale with difficulty
+    const HIT_WINDOW_PERFECT_BASE = 50;
+    const HIT_WINDOW_GOOD_BASE = 100;
+    const HIT_WINDOW_OK_BASE = 180;
     const BASE_SCORE = 250;
     const GAME_DURATION_MS = 32000;
     
@@ -343,7 +394,7 @@
     let circles = [];
     let score = 0, combo = 0, maxCombo = 0, totalHits = 0, misses = 0;
     let gameActive = false;
-    let currentDifficulty = 0;
+    let currentDifficulty = 1; // Start NORMAL
     let gameStartTimestamp = 0;
     let animationId = null;
     let beatTimestamps = [];
@@ -363,6 +414,17 @@
     const canvasElem = document.getElementById('gameCanvas');
     ctx = canvasElem.getContext('2d');
     
+    // Get dynamic timing windows based on difficulty
+    function getHitWindows() {
+        const diff = difficulties[currentDifficulty];
+        const scale = diff.timingWindow;
+        return {
+            perfect: Math.floor(HIT_WINDOW_PERFECT_BASE * scale),
+            good: Math.floor(HIT_WINDOW_GOOD_BASE * scale),
+            ok: Math.floor(HIT_WINDOW_OK_BASE * scale)
+        };
+    }
+    
     function showFloatingJudgement(text, x, y, color) {
         const div = document.createElement('div');
         div.className = 'floating-judgement';
@@ -375,6 +437,13 @@
         setTimeout(() => {
             if (div && div.parentNode) div.remove();
         }, 800);
+    }
+    
+    function updateDifficultyIndicator() {
+        const diff = difficulties[currentDifficulty];
+        document.getElementById('difficultyIndicator').innerHTML = `⚔️ ${diff.name} ⚔️`;
+        document.getElementById('difficultyIndicator').style.borderColor = diff.color;
+        document.getElementById('difficultyIndicator').style.color = diff.color;
     }
     
     function resizeCanvas() {
@@ -545,11 +614,9 @@
         if (totalHits + misses === 0) {
             accuracy = 100;
         } else {
-            // Accuracy = hits / (hits + misses) * 100
             accuracy = (totalHits / (totalHits + misses)) * 100;
         }
         
-        // Update both displays
         document.getElementById('accuracyWarning').innerHTML = `📊 ACC: ${accuracy.toFixed(1)}%`;
         document.getElementById('accValue').innerText = accuracy.toFixed(1);
         
@@ -624,20 +691,30 @@
     function generateBeatmap(diffIndex) {
         const cfg = difficulties[diffIndex];
         const totalNotes = cfg.noteCount;
-        const startOffset = 2000;
-        const endMargin = 1000;
+        const startOffset = 1500;
+        const endMargin = 800;
         const tStart = startOffset;
         const tEnd = GAME_DURATION_MS - endMargin;
         const timestamps = [];
         
+        // For harder difficulties, notes are more concentrated (less breathing room)
         for(let i = 0; i < totalNotes; i++) {
             let t;
-            if (i < totalNotes * 0.3) {
-                t = tStart + (i / (totalNotes * 0.3)) * (tEnd * 0.25);
+            if (diffIndex <= 1) {
+                // Easy/Normal: gradual increase
+                if (i < totalNotes * 0.3) {
+                    t = tStart + (i / (totalNotes * 0.3)) * (tEnd * 0.25);
+                } else {
+                    t = tStart + (tEnd * 0.25) + ((i - totalNotes * 0.3) / (totalNotes * 0.7)) * (tEnd * 0.75);
+                }
             } else {
-                t = tStart + (tEnd * 0.25) + ((i - totalNotes * 0.3) / (totalNotes * 0.7)) * (tEnd * 0.75);
+                // Hard/Insane: more aggressive, constant pressure
+                t = tStart + (i / totalNotes) * tEnd;
             }
-            t += (Math.random() - 0.5) * 35;
+            
+            // Add less randomness for harder difficulties (more precise)
+            const randomFactor = diffIndex <= 1 ? 35 : 20;
+            t += (Math.random() - 0.5) * randomFactor;
             timestamps.push(Math.min(tEnd, Math.max(tStart, t)));
         }
         timestamps.sort((a,b)=>a-b);
@@ -729,11 +806,12 @@
                     }
                 }
                 
+                const windows = getHitWindows();
                 for(let i=0; i<circles.length; i++) {
                     const c = circles[i];
                     if(!c.hit) {
                         const missDelta = elapsed - c.targetTime;
-                        if(missDelta > HIT_WINDOW_OK + 100) {
+                        if(missDelta > windows.ok + 100) {
                             c.hit = true;
                             combo = 0;
                             misses++;
@@ -746,7 +824,8 @@
                 circles = circles.filter(c => {
                     if(c.hit) return false;
                     const nowMs = elapsed;
-                    if(nowMs - c.targetTime > HIT_WINDOW_OK + 120) return false;
+                    const windows = getHitWindows();
+                    if(nowMs - c.targetTime > windows.ok + 120) return false;
                     return true;
                 });
             }
@@ -812,17 +891,18 @@
         
         if(closestCircle) {
             const timeDiff = Math.abs(elapsedGame - closestCircle.targetTime);
+            const windows = getHitWindows();
             let points, judgement, color;
             
-            if (timeDiff <= HIT_WINDOW_PERFECT) {
+            if (timeDiff <= windows.perfect) {
                 points = BASE_SCORE;
                 judgement = "PERFECT!";
                 color = "#ffd700";
-            } else if (timeDiff <= HIT_WINDOW_GOOD) {
+            } else if (timeDiff <= windows.good) {
                 points = Math.floor(BASE_SCORE * 0.85);
                 judgement = "GOOD!";
                 color = "#88ff88";
-            } else if (timeDiff <= HIT_WINDOW_OK) {
+            } else if (timeDiff <= windows.ok) {
                 points = Math.floor(BASE_SCORE * 0.6);
                 judgement = "OK";
                 color = "#88aaff";
@@ -966,12 +1046,10 @@
     canvasElem.addEventListener('click', handleTapEvent);
     canvasElem.addEventListener('touchstart', handleTapEvent, { passive: false });
     
-    // NEW GAME - refreshes the entire page
     document.getElementById('resetGameBtn').addEventListener('click', () => {
         location.reload();
     });
     
-    // RESTART - also refreshes the page for clean state
     document.getElementById('restartSameBtn').addEventListener('click', () => {
         location.reload();
     });
@@ -980,17 +1058,35 @@
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const newDiff = parseInt(btn.getAttribute('data-diff'));
-            if(!isNaN(newDiff) && newDiff !== currentDifficulty && !gameLocked && gameStarted) {
-                // When changing difficulty, reload to reset everything cleanly
-                location.reload();
+            if(!isNaN(newDiff) && newDiff !== currentDifficulty) {
+                currentDifficulty = newDiff;
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                updateDifficultyIndicator();
+                
+                // If game is already active, restart with new difficulty
+                if(gameStarted && !gameLocked && !quizActive) {
+                    gameStarted = false;
+                    gameActive = false;
+                    setTimeout(() => {
+                        gameStarted = true;
+                        gameActive = true;
+                        fullReset();
+                    }, 100);
+                }
             }
         });
     });
     
+    // Set initial active button
     document.querySelectorAll('.diff-btn').forEach(btn => {
+        if(parseInt(btn.getAttribute('data-diff')) === currentDifficulty) {
+            btn.classList.add('active');
+        }
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.6';
     });
+    updateDifficultyIndicator();
     
     async function init() {
         const questions = await loadQuestions();
