@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Standard · Sliders · Accuracy</title>
+    <title>osu! · Long Sliders · Standard</title>
     <style>
         * {
             user-select: none;
@@ -20,7 +20,6 @@
             font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif;
             margin: 0;
             padding: 20px;
-            overflow: hidden;
         }
 
         .quiz-overlay {
@@ -72,7 +71,6 @@
             cursor: pointer;
             text-align: center;
             font-size: 1rem;
-            transition: all 0.2s;
         }
 
         .quiz-opt:active {
@@ -137,7 +135,6 @@
             color: #ff88cc;
             pointer-events: none;
             font-family: monospace;
-            letter-spacing: 2px;
         }
 
         .game-container {
@@ -214,7 +211,6 @@
             border-radius: 40px;
             color: #cbd5ff;
             cursor: pointer;
-            transition: 0.2s ease;
         }
 
         .diff-btn.active {
@@ -240,7 +236,6 @@
             border-radius: 60px;
             color: #eff3ff;
             cursor: pointer;
-            transition: 0.15s linear;
         }
 
         button:active {
@@ -293,7 +288,6 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            animation: fadeIn 0.5s ease;
         }
 
         .death-container {
@@ -327,11 +321,6 @@
             border-radius: 60px;
             font-weight: bold;
             cursor: pointer;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
         }
 
         @media (max-width: 768px) {
@@ -371,7 +360,7 @@
         <div id="gameStatusMsg" class="result-message">Answer 3 questions to start</div>
     </div>
     <div class="footer-meta">
-        TAP circles • HOLD & FOLLOW sliders • ACCURACY &lt;60% = GAME OVER
+        TAP circles • HOLD & FOLLOW sliders (long distances) • ACCURACY &lt;60% = GAME OVER
     </div>
 </div>
 
@@ -458,17 +447,28 @@
         updateAccuracy();
     }
     
-    function generateSliderPath(startX, startY, endX, endY) {
+    // Generate LONG slider path (more distance)
+    function generateLongSliderPath(startX, startY, endX, endY) {
         const points = [];
-        const steps = 35;
+        const steps = 50; // More points for smoother long curves
         
-        const cp1x = startX + (endX - startX) * 0.25;
-        const cp1y = startY + (endY - startY) * 0.2;
-        const cp2x = startX + (endX - startX) * 0.75;
-        const cp2y = startY + (endY - startY) * 0.8;
+        // Create a longer arc by adding control points that pull outward
+        const midX = (startX + endX) / 2;
+        const midY = (startY + endY) / 2;
+        
+        // Calculate distance to determine curve intensity
+        const distance = Math.hypot(endX - startX, endY - startY);
+        const curveAmount = Math.min(120, distance * 0.6); // Longer distance = bigger curve
+        
+        // Control points that create a beautiful S-curve
+        const cp1x = startX + (endX - startX) * 0.2 + (Math.random() - 0.5) * curveAmount;
+        const cp1y = startY + (endY - startY) * 0.1 + (Math.random() - 0.5) * curveAmount * 0.8;
+        const cp2x = startX + (endX - startX) * 0.8 + (Math.random() - 0.5) * curveAmount;
+        const cp2y = startY + (endY - startY) * 0.9 + (Math.random() - 0.5) * curveAmount * 0.8;
         
         for (let i = 0; i <= steps; i++) {
             const t = i / steps;
+            // Cubic bezier
             const x = Math.pow(1-t,3)*startX + 3*Math.pow(1-t,2)*t*cp1x + 3*(1-t)*Math.pow(t,2)*cp2x + Math.pow(t,3)*endX;
             const y = Math.pow(1-t,3)*startY + 3*Math.pow(1-t,2)*t*cp1y + 3*(1-t)*Math.pow(t,2)*cp2y + Math.pow(t,3)*endY;
             points.push({x, y});
@@ -482,6 +482,7 @@
         const endTime = GAME_DURATION;
         const notes = [];
         
+        // Generate circles
         for (let i = 0; i < diff.circleCount; i++) {
             let t = startOffset + (i / diff.circleCount) * (endTime - startOffset - 500);
             t += (Math.random() - 0.5) * 40;
@@ -501,20 +502,41 @@
             });
         }
         
+        // Generate LONG sliders (much farther distance)
         for (let i = 0; i < diff.sliderCount; i++) {
             let t = startOffset + 800 + (i / diff.sliderCount) * (endTime - startOffset - 1000);
             t += (Math.random() - 0.5) * 50;
             
-            const margin = 80;
+            const margin = 60;
+            // Make sliders span ACROSS the screen - much longer distance
             const startX = margin + Math.random() * (canvasElem.width - margin * 2);
             const startY = margin + Math.random() * (canvasElem.height - margin * 2);
             
-            let endX = startX + (Math.random() - 0.5) * 180;
-            let endY = startY + (Math.random() - 0.5) * 120;
-            endX = Math.min(canvasElem.width - margin, Math.max(margin, endX));
-            endY = Math.min(canvasElem.height - margin, Math.max(margin, endY));
+            // Force longer distance - min 150px, max almost full screen
+            let endX, endY;
+            let distance = 0;
             
-            const points = generateSliderPath(startX, startY, endX, endY);
+            // Keep trying until we get a good long distance
+            let attempts = 0;
+            do {
+                const angle = Math.random() * Math.PI * 2;
+                const minDistance = 180; // Minimum 180px drag distance
+                const maxDistance = 320; // Maximum 320px drag distance
+                const dist = minDistance + Math.random() * (maxDistance - minDistance);
+                
+                endX = startX + Math.cos(angle) * dist;
+                endY = startY + Math.sin(angle) * dist;
+                
+                // Keep within bounds
+                endX = Math.min(canvasElem.width - margin, Math.max(margin, endX));
+                endY = Math.min(canvasElem.height - margin, Math.max(margin, endY));
+                
+                distance = Math.hypot(endX - startX, endY - startY);
+                attempts++;
+            } while (distance < 140 && attempts < 10); // Ensure long distance
+            
+            // Generate long path
+            const points = generateLongSliderPath(startX, startY, endX, endY);
             
             notes.push({
                 type: 'slider',
@@ -527,7 +549,8 @@
                 hit: false,
                 completed: false,
                 dragProgress: 0,
-                id: Math.random()
+                id: Math.random(),
+                totalLength: points.length
             });
         }
         
@@ -652,7 +675,7 @@
             ctx.fillStyle = `rgba(255, 200, 220, ${alpha})`;
             ctx.fill();
             
-            // End circle
+            // End circle (slightly smaller)
             ctx.beginPath();
             ctx.arc(s.endX, s.endY, s.radius - 2, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(200, 120, 180, ${alpha})`;
@@ -662,7 +685,7 @@
             ctx.fillStyle = `rgba(255, 220, 240, ${alpha})`;
             ctx.fill();
             
-            // Progress highlight
+            // Progress highlight for dragged sliders
             if (currentDrag && currentDrag.id === s.id && s.dragProgress > 0) {
                 const progressIndex = Math.floor(s.dragProgress * (s.points.length - 1));
                 for (let i = 0; i <= progressIndex; i++) {
@@ -809,6 +832,7 @@
         const points = currentDrag.points;
         let bestProgress = currentDrag.dragProgress;
         
+        // Check from current progress to end
         for (let i = Math.floor(bestProgress * (points.length - 1)); i < points.length; i++) {
             const dx = points[i].x - canvasX;
             const dy = points[i].y - canvasY;
@@ -919,7 +943,7 @@
                     } else {
                         const msg = document.createElement('div');
                         msg.style.cssText = 'color:#ff8888;text-align:center;margin-top:15px';
-                        msg.innerText = 'WRONG - TRY AGAIN';
+                        msg.innerText = "WRONG - TRY AGAIN";
                         overlay.querySelector('.quiz-container').appendChild(msg);
                         setTimeout(() => msg.remove(), 1200);
                     }
