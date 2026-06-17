@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Working Sliders · Guaranteed Drag</title>
+    <title>osu! · Tin Shing Court Questions · Sliders Both Ends</title>
     <style>
         * {
             user-select: none;
@@ -71,6 +71,7 @@
             cursor: pointer;
             text-align: center;
             font-size: 1rem;
+            transition: all 0.2s;
         }
 
         .quiz-opt:active {
@@ -358,14 +359,35 @@
         <button id="restartSameBtn">RESTART</button>
     </div>
     <div style="display: flex; justify-content: center;">
-        <div id="gameStatusMsg" class="result-message">Answer 3 questions to start</div>
+        <div id="gameStatusMsg" class="result-message">Loading questions...</div>
     </div>
     <div class="footer-meta">
-        TAP circles • HOLD & DRAG on sliders (follow the pink line) • ACCURACY &lt;60% = GAME OVER
+        TAP circles • SLIDERS: start from EITHER end • ACCURACY &lt;60% = GAME OVER
     </div>
 </div>
 
 <script>
+    // ============================================
+    // EMBEDDED QUESTIONS (Tin Shing Court - English)
+    // ============================================
+    const DEFAULT_QUESTIONS = [
+        {
+            "question": "How many rooms does Tin Shing Court have?",
+            "options": ["1", "2", "3", "4"],
+            "correct": 2
+        },
+        {
+            "question": "When was Tin Shing Court finished building?",
+            "options": ["1986", "1987", "1999", "2000"],
+            "correct": 2
+        },
+        {
+            "question": "How many times have the Tin Shing Mall been rebuilt?",
+            "options": ["1", "2", "3", "4"],
+            "correct": 0
+        }
+    ];
+
     const difficulties = [
         { name: "EASY",   circleCount: 25, sliderCount: 4, approachTime: 1300, radius: 38, timingWindow: 1.3 },
         { name: "NORMAL", circleCount: 38, sliderCount: 7, approachTime: 1000, radius: 34, timingWindow: 1.0 },
@@ -383,6 +405,7 @@
     let activeCircles = [];
     let activeSliders = [];
     let draggingSliderId = null;
+    let dragDirection = 1;
     let score = 0, combo = 0, maxCombo = 0, totalHits = 0, misses = 0;
     let gameActive = false, gameStarted = false;
     let currentDifficulty = 1;
@@ -473,7 +496,6 @@
         const endTime = GAME_DURATION;
         const notes = [];
         
-        // Generate circles
         for (let i = 0; i < diff.circleCount; i++) {
             let t = startOffset + (i / diff.circleCount) * (endTime - startOffset - 500);
             t += (Math.random() - 0.5) * 40;
@@ -493,7 +515,6 @@
             });
         }
         
-        // Generate sliders
         for (let i = 0; i < diff.sliderCount; i++) {
             let t = startOffset + 800 + (i / diff.sliderCount) * (endTime - startOffset - 1000);
             t += (Math.random() - 0.5) * 50;
@@ -615,12 +636,10 @@
         const now = performance.now();
         const elapsed = now - gameStartTime;
         
-        // Draw sliders
         for (const s of activeSliders) {
             const timeToHit = s.time - elapsed;
             const alpha = Math.min(1, Math.max(0.4, 1 - (s.approachTime - timeToHit) / s.approachTime * 0.5));
             
-            // Slider body
             ctx.beginPath();
             ctx.moveTo(s.points[0].x, s.points[0].y);
             for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
@@ -628,7 +647,6 @@
             ctx.lineWidth = 6;
             ctx.stroke();
             
-            // Slider border
             ctx.beginPath();
             ctx.moveTo(s.points[0].x, s.points[0].y);
             for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
@@ -636,7 +654,7 @@
             ctx.lineWidth = 2;
             ctx.stroke();
             
-            // Start circle
+            // Start circle (PINK)
             ctx.beginPath();
             ctx.arc(s.startX, s.startY, s.radius, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(200, 100, 160, ${alpha})`;
@@ -646,19 +664,24 @@
             ctx.fillStyle = `rgba(255, 200, 220, ${alpha})`;
             ctx.fill();
             
-            // End circle
+            // End circle (CYAN)
             ctx.beginPath();
-            ctx.arc(s.endX, s.endY, s.radius - 2, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(200, 120, 180, ${alpha})`;
+            ctx.arc(s.endX, s.endY, s.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(100, 150, 200, ${alpha})`;
             ctx.fill();
             ctx.beginPath();
-            ctx.arc(s.endX, s.endY, s.radius - 6, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 220, 240, ${alpha})`;
+            ctx.arc(s.endX, s.endY, s.radius - 3, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(180, 220, 255, ${alpha})`;
             ctx.fill();
             
-            // Progress highlight for dragged slider
             if (draggingSliderId === s.id && s.dragProgress > 0) {
-                const progressIndex = Math.floor(s.dragProgress * (s.points.length - 1));
+                let progressIndex;
+                if (dragDirection === 1) {
+                    progressIndex = Math.floor(s.dragProgress * (s.points.length - 1));
+                } else {
+                    progressIndex = Math.floor((1 - s.dragProgress) * (s.points.length - 1));
+                }
+                
                 for (let i = 0; i <= progressIndex; i++) {
                     ctx.beginPath();
                     ctx.arc(s.points[i].x, s.points[i].y, s.radius - 1, 0, Math.PI * 2);
@@ -668,7 +691,6 @@
             }
         }
         
-        // Draw circles
         for (const c of activeCircles) {
             const timeToHit = c.time - elapsed;
             let scale = 1.0;
@@ -696,7 +718,6 @@
             ctx.fill();
         }
         
-        // Combo display
         if (combo >= 5 && gameStarted && gameActive && !deathTriggered) {
             ctx.font = `bold 36px "Courier New"`;
             ctx.fillStyle = "#ffcc66";
@@ -706,7 +727,6 @@
             ctx.shadowBlur = 0;
         }
         
-        // Progress bar
         const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION));
         ctx.fillStyle = "#ff66aa30";
         ctx.fillRect(20, canvasElem.height - 25, canvasElem.width - 40, 8);
@@ -724,7 +744,6 @@
         const canvasY = (clientY - rect.top) * scaleY;
         const elapsed = performance.now() - gameStartTime;
         
-        // Hit circles
         for (let i = 0; i < activeCircles.length; i++) {
             const c = activeCircles[i];
             const dx = c.x - canvasX;
@@ -763,25 +782,40 @@
             }
         }
         
-        // Start dragging slider - FIXED
         for (let i = 0; i < activeSliders.length; i++) {
             const s = activeSliders[i];
-            const dx = s.startX - canvasX;
-            const dy = s.startY - canvasY;
-            if (Math.hypot(dx, dy) <= s.radius * 1.5 && draggingSliderId === null) {
+            
+            const dxStart = s.startX - canvasX;
+            const dyStart = s.startY - canvasY;
+            const distToStart = Math.hypot(dxStart, dyStart);
+            
+            const dxEnd = s.endX - canvasX;
+            const dyEnd = s.endY - canvasY;
+            const distToEnd = Math.hypot(dxEnd, dyEnd);
+            
+            const tappedStart = distToStart <= s.radius * 1.5;
+            const tappedEnd = distToEnd <= s.radius * 1.5;
+            
+            if ((tappedStart || tappedEnd) && draggingSliderId === null) {
                 const timeDiff = Math.abs(elapsed - s.time);
                 const scale = difficulties[currentDifficulty].timingWindow;
                 if (timeDiff <= TIMING.ok * scale) {
                     draggingSliderId = s.id;
                     s.dragProgress = 0;
                     s.hit = true;
-                    showMessage("SLIDER", clientX, clientY, "#ff88ff");
+                    
+                    if (tappedStart) {
+                        dragDirection = 1;
+                        showMessage("SLIDER", clientX, clientY, "#ff88ff");
+                    } else {
+                        dragDirection = -1;
+                        showMessage("SLIDER (REVERSE)", clientX, clientY, "#88aaff");
+                    }
                     return;
                 }
             }
         }
         
-        // Miss
         combo = 0;
         misses++;
         updateUI();
@@ -792,7 +826,6 @@
         if (!gameActive || !gameStarted || deathTriggered) return;
         if (draggingSliderId === null) return;
         
-        // Find the slider being dragged
         const s = activeSliders.find(sl => sl.id === draggingSliderId);
         if (!s) {
             draggingSliderId = null;
@@ -808,13 +841,17 @@
         const points = s.points;
         let bestProgress = s.dragProgress;
         
-        // Find closest point on path
         for (let i = 0; i < points.length; i++) {
             const dx = points[i].x - canvasX;
             const dy = points[i].y - canvasY;
             const distToPoint = Math.hypot(dx, dy);
             if (distToPoint <= s.radius * 1.8) {
-                const newProgress = i / (points.length - 1);
+                let newProgress = i / (points.length - 1);
+                
+                if (dragDirection === -1) {
+                    newProgress = 1 - newProgress;
+                }
+                
                 if (newProgress > bestProgress) {
                     bestProgress = newProgress;
                 }
@@ -824,7 +861,6 @@
         if (bestProgress > s.dragProgress) {
             s.dragProgress = bestProgress;
             
-            // Check if slider is complete
             if (s.dragProgress >= 0.98) {
                 const pointsEarned = SLIDER_SCORE + Math.floor(combo * 2);
                 score += pointsEarned;
@@ -834,7 +870,6 @@
                 updateUI();
                 showMessage("SLIDER END", clientX, clientY, "#88ff88");
                 
-                // Remove from active sliders
                 const index = activeSliders.findIndex(sl => sl.id === s.id);
                 if (index !== -1) activeSliders.splice(index, 1);
                 draggingSliderId = null;
@@ -882,18 +917,19 @@
         };
     });
     
+    // ============================================
+    // LOAD QUESTIONS - FALLBACK TO DEFAULT
+    // ============================================
     async function loadQuestions() {
         try {
-            const res = await fetch('questions.json');
-            if (!res.ok) throw new Error();
-            const data = await res.json();
+            const response = await fetch('questions.json');
+            if (!response.ok) throw new Error('questions.json not found');
+            const data = await response.json();
             questionBank = data.questions || data;
-        } catch(e) {
-            questionBank = [
-                { question: "What is the capital of France?", options: ["London", "Berlin", "Paris", "Madrid"], correct: 2 },
-                { question: "What is 2 + 2?", options: ["3", "4", "5", "6"], correct: 1 },
-                { question: "Who painted the Mona Lisa?", options: ["Van Gogh", "Picasso", "Da Vinci", "Rembrandt"], correct: 2 }
-            ];
+            console.log('✅ Loaded questions from questions.json');
+        } catch (error) {
+            console.log('⚠️ Using embedded default questions (Tin Shing Court)');
+            questionBank = DEFAULT_QUESTIONS;
         }
     }
     
@@ -916,7 +952,16 @@
                 return;
             }
             const q = questions[qIndex];
-            overlay.innerHTML = `<div class="quiz-container"><div class="progress-badge">QUESTION ${qIndex+1}/3</div><div class="progress-badge" style="color:#88ff88">INFINITE ATTEMPTS</div><div class="quiz-question">${q.question}</div><div class="quiz-options">${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${opt}</div>`).join('')}</div></div>`;
+            overlay.innerHTML = `
+                <div class="quiz-container">
+                    <div class="progress-badge">QUESTION ${qIndex+1}/3</div>
+                    <div class="progress-badge" style="color:#88ff88">INFINITE ATTEMPTS</div>
+                    <div class="quiz-question">${q.question}</div>
+                    <div class="quiz-options">
+                        ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${opt}</div>`).join('')}
+                    </div>
+                </div>
+            `;
             
             document.querySelectorAll('.quiz-opt').forEach(btn => {
                 btn.onclick = () => {
@@ -926,7 +971,7 @@
                     } else {
                         const msg = document.createElement('div');
                         msg.style.cssText = 'color:#ff8888;text-align:center;margin-top:15px';
-                        msg.innerText = "WRONG - TRY AGAIN";
+                        msg.innerText = "❌ WRONG - TRY AGAIN";
                         overlay.querySelector('.quiz-container').appendChild(msg);
                         setTimeout(() => msg.remove(), 1200);
                     }
@@ -938,13 +983,19 @@
         showQuestion();
     }
     
+    // Initialize
     document.querySelectorAll('.diff-btn').forEach(btn => {
         if (parseInt(btn.dataset.diff) === currentDifficulty) btn.classList.add('active');
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.6';
     });
     
-    loadQuestions().then(() => startQuiz());
+    document.getElementById('gameStatusMsg').innerHTML = '📚 Loading questions...';
+    
+    loadQuestions().then(() => {
+        document.getElementById('gameStatusMsg').innerHTML = '✨ Answer 3 questions to start';
+        startQuiz();
+    });
 </script>
 </body>
 </html>
