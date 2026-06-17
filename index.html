@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Rhythm Game + Music</title>
+    <title>osu! · Rhythm Game + Music Storage</title>
     <style>
         * {
             user-select: none;
@@ -78,6 +78,16 @@
 
         .controls button.primary {
             background: #ff66aa;
+            color: white;
+        }
+
+        .controls button.success {
+            background: #66cc88;
+            color: white;
+        }
+
+        .controls button.danger {
+            background: #ff3366;
             color: white;
         }
 
@@ -314,6 +324,15 @@
             font-weight: bold;
         }
 
+        .file-input-hidden {
+            display: none;
+        }
+
+        .music-status {
+            color: #88ff88;
+            font-weight: bold;
+        }
+
         @media (max-width: 768px) {
             body { padding: 5px; }
             .floating-judgement { font-size: 1.2rem; }
@@ -337,6 +356,7 @@
     <div class="controls">
         <button class="primary" id="playBtn">▶ PLAY</button>
         <button id="resetBtn">🔄 RESTART</button>
+        <button id="clearMusicBtn" class="danger">🗑 CLEAR MUSIC</button>
         
         <span style="color:#666;font-size:0.6rem;">|</span>
         
@@ -347,21 +367,21 @@
         
         <span style="color:#666;font-size:0.6rem;">|</span>
         
-        <label>MUSIC</label>
+        <label>UPLOAD MUSIC</label>
         <input type="file" id="musicFileInput" accept="audio/*" style="width:120px;padding:2px 8px;font-size:0.6rem;">
     </div>
     
     <div class="status-bar">
         <span id="scoreDisplay">SCORE: 0</span>
         <span id="comboDisplay">COMBO: 0</span>
-        <span id="musicStatus">NO MUSIC</span>
+        <span id="musicStatus" class="music-status">NO MUSIC</span>
         <span id="gameStatus">READY</span>
     </div>
 </div>
 
 <script>
     // ============================================
-    // ORIGINAL OSU! GAME + MUSIC
+    // OSU! GAME + MUSIC SAVED IN LOCALSTORAGE
     // ============================================
     
     const DEFAULT_QUESTIONS = [
@@ -398,6 +418,7 @@
     let audioBuffer = null;
     let audioSource = null;
     let musicName = 'No Music';
+    let savedMusicData = null;
     
     let quizActive = true, gameLocked = true;
     let questionBank = [];
@@ -407,6 +428,82 @@
     canvasElem.width = 800;
     canvasElem.height = 500;
     ctx = canvasElem.getContext('2d');
+    
+    // ============================================
+    // LOCALSTORAGE MUSIC SAVE/LOAD
+    // ============================================
+    const MUSIC_STORAGE_KEY = 'osuSavedMusic';
+    
+    function saveMusicToStorage(name, data) {
+        try {
+            const musicData = {
+                name: name,
+                data: data,
+                savedAt: Date.now()
+            };
+            localStorage.setItem(MUSIC_STORAGE_KEY, JSON.stringify(musicData));
+            console.log('🎵 Music saved to localStorage');
+            return true;
+        } catch (e) {
+            console.error('Failed to save music:', e);
+            // If storage is full (file too large), show error
+            if (e.name === 'QuotaExceededError') {
+                alert('⚠️ Music file too large for localStorage. Try a smaller file (under 10MB).');
+            }
+            return false;
+        }
+    }
+    
+    function loadMusicFromStorage() {
+        try {
+            const stored = localStorage.getItem(MUSIC_STORAGE_KEY);
+            if (!stored) return null;
+            const musicData = JSON.parse(stored);
+            return musicData;
+        } catch (e) {
+            console.error('Failed to load music:', e);
+            return null;
+        }
+    }
+    
+    function clearMusicFromStorage() {
+        localStorage.removeItem(MUSIC_STORAGE_KEY);
+        console.log('🗑 Music cleared from localStorage');
+        document.getElementById('musicStatus').innerHTML = 'NO MUSIC';
+        document.getElementById('musicStatus').style.color = '#ff6666';
+        musicName = 'No Music';
+        audioBuffer = null;
+        savedMusicData = null;
+    }
+    
+    async function loadSavedMusic() {
+        const stored = loadMusicFromStorage();
+        if (!stored) return false;
+        
+        try {
+            // Decode base64 audio data
+            const binaryString = atob(stored.data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const arrayBuffer = bytes.buffer;
+            
+            const ctx = initAudio();
+            audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+            musicName = stored.name;
+            savedMusicData = stored;
+            
+            document.getElementById('musicStatus').innerHTML = '💾 ' + musicName;
+            document.getElementById('musicStatus').style.color = '#88ff88';
+            document.getElementById('gameStatus').innerHTML = 'MUSIC LOADED FROM STORAGE';
+            return true;
+        } catch (err) {
+            console.error('Error loading saved music:', err);
+            clearMusicFromStorage();
+            return false;
+        }
+    }
     
     // ============================================
     // AUDIO
@@ -425,12 +522,27 @@
                 const ctx = initAudio();
                 const arrayBuffer = e.target.result;
                 audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-                musicName = file.name;
-                document.getElementById('musicStatus').innerHTML = '🎵 ' + musicName;
-                document.getElementById('gameStatus').innerHTML = 'MUSIC LOADED';
+                
+                // Save to localStorage (convert to base64)
+                const bytes = new Uint8Array(arrayBuffer);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                const base64Data = btoa(binary);
+                
+                const saved = saveMusicToStorage(file.name, base64Data);
+                if (saved) {
+                    musicName = file.name;
+                    savedMusicData = { name: file.name, data: base64Data };
+                    document.getElementById('musicStatus').innerHTML = '💾 ' + musicName;
+                    document.getElementById('musicStatus').style.color = '#88ff88';
+                    document.getElementById('gameStatus').innerHTML = 'MUSIC SAVED';
+                }
             } catch (err) {
                 console.error('Error loading music:', err);
                 document.getElementById('musicStatus').innerHTML = '❌ ERROR';
+                document.getElementById('musicStatus').style.color = '#ff6666';
             }
         };
         reader.readAsArrayBuffer(file);
@@ -441,14 +553,17 @@
         try {
             const ctx = initAudio();
             if (audioSource) {
-                audioSource.stop();
-                audioSource.disconnect();
+                try {
+                    audioSource.stop();
+                    audioSource.disconnect();
+                } catch(e) {}
             }
             audioSource = ctx.createBufferSource();
             audioSource.buffer = audioBuffer;
             audioSource.connect(ctx.destination);
             audioSource.start(0);
             document.getElementById('musicStatus').innerHTML = '▶ ' + musicName;
+            document.getElementById('musicStatus').style.color = '#ffcc66';
         } catch (err) {
             console.error('Error playing music:', err);
         }
@@ -462,6 +577,10 @@
             } catch(e) {}
             audioSource = null;
         }
+        if (musicName !== 'No Music') {
+            document.getElementById('musicStatus').innerHTML = '⏸ ' + musicName;
+            document.getElementById('musicStatus').style.color = '#88ff88';
+        }
     }
     
     // ============================================
@@ -473,7 +592,6 @@
         const startOffset = 1500;
         const endTime = GAME_DURATION;
         
-        // Single circles
         for (let i = 0; i < diff.circleCount; i++) {
             let t = startOffset + (i / diff.circleCount) * (endTime - startOffset - 500);
             t += (Math.random() - 0.5) * 40;
@@ -493,7 +611,6 @@
             });
         }
         
-        // Double tap notes
         for (let i = 0; i < diff.doubleCount; i++) {
             let t = startOffset + 800 + (i / diff.doubleCount) * (endTime - startOffset - 1000);
             t += (Math.random() - 0.5) * 50;
@@ -536,6 +653,11 @@
     // GAME PLAY
     // ============================================
     function startGame() {
+        if (!audioBuffer) {
+            document.getElementById('gameStatus').innerHTML = '⚠️ UPLOAD MUSIC FIRST';
+            return;
+        }
+        
         stopMusic();
         
         allNotes = generateNotes();
@@ -602,10 +724,9 @@
                 }
                 activeDoubles = activeDoubles.filter(n => !n.hit);
                 
-                // Check if all notes processed
                 if (nextNoteIndex >= allNotes.length && activeCircles.length === 0 && activeDoubles.length === 0) {
                     gameActive = false;
-                    document.getElementById('gameStatus').innerHTML = 'FINISHED!';
+                    document.getElementById('gameStatus').innerHTML = '🎉 FINISHED!';
                     document.getElementById('playBtn').style.background = '#66cc88';
                     stopMusic();
                 }
@@ -629,7 +750,6 @@
         const now = performance.now();
         const elapsed = now - gameStartTime;
         
-        // Double tap notes
         for (const d of activeDoubles) {
             const timeToHit = d.time - elapsed;
             const alpha = Math.min(1, Math.max(0.3, 1 - (d.approachTime - timeToHit) / d.approachTime * 0.5));
@@ -680,7 +800,6 @@
             if (!isTapped2) ctx.fillText("2", d.x2, d.y2 + 1);
         }
         
-        // Single circles
         for (const c of activeCircles) {
             const timeToHit = c.time - elapsed;
             let scale = 1.0;
@@ -708,7 +827,6 @@
             ctx.fill();
         }
         
-        // Combo
         if (combo >= 5 && gameStarted && gameActive && !deathTriggered) {
             ctx.font = `bold 32px "Courier New"`;
             ctx.fillStyle = "#ffcc66";
@@ -719,14 +837,12 @@
             ctx.shadowBlur = 0;
         }
         
-        // Progress bar
         const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION));
         ctx.fillStyle = "#ff66aa30";
         ctx.fillRect(20, canvasElem.height - 20, canvasElem.width - 40, 6);
         ctx.fillStyle = "#ff66aa";
         ctx.fillRect(20, canvasElem.height - 20, (canvasElem.width - 40) * prog, 6);
         
-        // Score on canvas
         ctx.fillStyle = "#aab3cf";
         ctx.font = "14px monospace";
         ctx.textAlign = "left";
@@ -752,7 +868,6 @@
         const {x, y} = getCanvasCoords(clientX, clientY);
         const elapsed = performance.now() - gameStartTime;
         
-        // Single circles
         for (let i = 0; i < activeCircles.length; i++) {
             const c = activeCircles[i];
             const dx = c.x - x;
@@ -791,7 +906,6 @@
             }
         }
         
-        // Double tap notes
         for (let i = 0; i < activeDoubles.length; i++) {
             const d = activeDoubles[i];
             if (d.hit) continue;
@@ -941,9 +1055,17 @@
         draw();
     };
     
+    document.getElementById('clearMusicBtn').onclick = () => {
+        if (confirm('Clear saved music from localStorage?')) {
+            clearMusicFromStorage();
+            document.getElementById('gameStatus').innerHTML = 'MUSIC CLEARED';
+        }
+    };
+    
     document.getElementById('musicFileInput').onchange = (e) => {
         if (e.target.files && e.target.files[0]) {
             loadMusicFile(e.target.files[0]);
+            document.getElementById('gameStatus').innerHTML = 'MUSIC UPLOADED & SAVED';
         }
     };
     
@@ -967,7 +1089,7 @@
                 overlay.remove();
                 quizActive = false;
                 gameLocked = false;
-                document.getElementById('gameStatus').innerHTML = 'READY - PRESS PLAY';
+                document.getElementById('gameStatus').innerHTML = 'READY - UPLOAD MUSIC & PLAY';
                 return;
             }
             const q = questions[qIndex];
@@ -1017,6 +1139,11 @@
     }
     
     document.getElementById('gameStatus').innerHTML = 'Loading...';
+    
+    // Try to load saved music first
+    loadSavedMusic().then(() => {
+        console.log('Music loaded from storage');
+    });
     
     loadQuestions().then(() => {
         document.getElementById('gameStatus').innerHTML = 'Answer 3 questions';
