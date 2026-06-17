@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Long Sliders · No Emojis</title>
+    <title>osu! · Long Sliders · Both Ends Work</title>
     <style>
         * {
             user-select: none;
@@ -371,7 +371,7 @@
         <div id="gameStatusMsg" class="result-message">Loading questions...</div>
     </div>
     <div class="footer-meta">
-        TAP circles • SLIDERS: start from either end • ACCURACY below 60% = GAME OVER
+        TAP circles • SLIDERS: HOLD on either end and drag along the path • ACCURACY below 60% = GAME OVER
     </div>
 </div>
 
@@ -399,7 +399,7 @@
     let activeCircles = [];
     let activeSliders = [];
     let draggingSlider = null;
-    let dragDirection = 1;
+    let dragDirection = 1; // 1 = start->end, -1 = end->start
     let score = 0, combo = 0, maxCombo = 0, totalHits = 0, misses = 0;
     let gameActive = false, gameStarted = false;
     let currentDifficulty = 1;
@@ -466,7 +466,6 @@
         updateAccuracy();
     }
     
-    // Generate LONG slider path with big curves
     function generateLongSliderPath(startX, startY, endX, endY) {
         const points = [];
         const steps = 40;
@@ -494,7 +493,6 @@
         const endTime = GAME_DURATION;
         const notes = [];
         
-        // Circles
         for (let i = 0; i < diff.circleCount; i++) {
             let t = startOffset + (i / diff.circleCount) * (endTime - startOffset - 500);
             t += (Math.random() - 0.5) * 40;
@@ -514,7 +512,6 @@
             });
         }
         
-        // Sliders - MUCH FARTHER DISTANCE
         for (let i = 0; i < diff.sliderCount; i++) {
             let t = startOffset + 800 + (i / diff.sliderCount) * (endTime - startOffset - 1000);
             t += (Math.random() - 0.5) * 50;
@@ -523,7 +520,6 @@
             const startX = margin + Math.random() * (canvasElem.width - margin * 2);
             const startY = margin + Math.random() * (canvasElem.height - margin * 2);
             
-            // Force long distance: min 250px, max 450px
             let endX, endY;
             let distance = 0;
             let attempts = 0;
@@ -817,7 +813,9 @@
             }
         }
         
-        // Slider start - BOTH ENDS
+        // ============================================
+        // SLIDER: BOTH ENDS WORK - TAP ON EITHER
+        // ============================================
         for (let i = 0; i < activeSliders.length; i++) {
             const s = activeSliders[i];
             if (draggingSlider) break;
@@ -836,13 +834,15 @@
                     s.dragProgress = 0;
                     s.hit = true;
                     
+                    // Set direction based on which end was tapped
                     if (tappedStart) {
-                        dragDirection = 1;
-                        showMessage("SLIDER", clientX, clientY, "#ff88ff");
+                        dragDirection = 1; // Forward: Start -> End
                     } else {
-                        dragDirection = -1;
-                        showMessage("SLIDER REVERSE", clientX, clientY, "#88aaff");
+                        dragDirection = -1; // Reverse: End -> Start
                     }
+                    
+                    // Same message for both directions
+                    showMessage("SLIDER", clientX, clientY, "#ff88ff");
                     return;
                 }
             }
