@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Double Tap Notes · No Sliders</title>
+    <title>osu! · Beatmap Builder + Export/Import .osubm</title>
     <style>
         * {
             user-select: none;
@@ -25,70 +25,119 @@
             touch-action: none;
         }
 
-        .quiz-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(12px);
-            z-index: 1000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .quiz-container {
-            background: linear-gradient(135deg, #1e1b2e, #141121);
-            border-radius: 48px;
-            padding: 25px 20px;
-            max-width: 500px;
-            width: 90%;
-            border: 2px solid #ff88cc;
-            box-shadow: 0 0 40px rgba(255, 136, 204, 0.3);
-        }
-
-        .quiz-question {
-            font-size: 1.3rem;
-            font-weight: 800;
-            color: #ffd966;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .quiz-options {
+        .main-container {
             display: flex;
             flex-direction: column;
             gap: 10px;
-            margin-bottom: 20px;
+            width: 100%;
+            max-width: 820px;
         }
 
-        .quiz-opt {
-            background: #2a2342;
-            border: 2px solid #5a4a8a;
-            padding: 14px 20px;
-            border-radius: 60px;
-            color: #f0e6ff;
-            font-weight: bold;
+        .game-container {
+            background: rgba(10, 14, 23, 0.65);
+            backdrop-filter: blur(4px);
+            border-radius: 32px;
+            padding: 15px;
+            box-shadow: 0 25px 40px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 24px;
+            background: #11161f;
+            width: 100%;
+            height: auto;
+            touch-action: none;
             cursor: pointer;
-            text-align: center;
-            font-size: 1rem;
-            transition: all 0.2s;
-            -webkit-tap-highlight-color: transparent;
         }
 
-        .quiz-opt:active {
-            background: #ff66aa;
-            transform: scale(0.97);
+        .controls {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            padding: 8px 10px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 16px;
+            align-items: center;
         }
 
-        .progress-badge {
-            text-align: center;
-            font-size: 1rem;
-            margin-bottom: 15px;
-            color: #ffaa88;
+        .controls button {
+            background: #292f42;
+            border: none;
+            font-family: inherit;
             font-weight: bold;
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 40px;
+            color: #eff3ff;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            white-space: nowrap;
+        }
+
+        .controls button:active {
+            transform: scale(0.95);
+        }
+
+        .controls button.primary {
+            background: #ff66aa;
+            color: white;
+        }
+
+        .controls button.danger {
+            background: #ff3366;
+            color: white;
+        }
+
+        .controls button.success {
+            background: #66cc88;
+            color: white;
+        }
+
+        .controls button.warning {
+            background: #ffaa44;
+            color: #1a1a2e;
+        }
+
+        .controls input, .controls select {
+            background: #1e2438;
+            border: 1px solid #4a4a6a;
+            border-radius: 40px;
+            padding: 3px 10px;
+            color: #f0e6ff;
+            font-family: inherit;
+            font-size: 0.7rem;
+            outline: none;
+            min-width: 60px;
+        }
+
+        .controls input:focus, .controls select:focus {
+            border-color: #ff66aa;
+        }
+
+        .controls label {
+            color: #aab3cf;
+            font-size: 0.65rem;
+            font-weight: bold;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 12px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            flex-wrap: wrap;
+        }
+
+        .status-bar span {
+            color: #aab3cf;
+            font-size: 0.65rem;
+            font-family: monospace;
         }
 
         .lives-display {
@@ -96,10 +145,10 @@
             top: 10px;
             right: 10px;
             background: rgba(0,0,0,0.8);
-            padding: 6px 14px;
+            padding: 4px 12px;
             border-radius: 60px;
             font-weight: bold;
-            font-size: 1rem;
+            font-size: 0.9rem;
             z-index: 100;
             backdrop-filter: blur(8px);
             border: 1px solid #ff6699;
@@ -112,7 +161,7 @@
             top: 10px;
             left: 10px;
             background: rgba(0,0,0,0.8);
-            padding: 6px 14px;
+            padding: 4px 12px;
             border-radius: 60px;
             font-weight: bold;
             font-size: 0.8rem;
@@ -140,132 +189,6 @@
             color: #ff88cc;
             pointer-events: none;
             font-family: monospace;
-        }
-
-        .game-container {
-            background: rgba(10, 14, 23, 0.65);
-            backdrop-filter: blur(4px);
-            border-radius: 32px;
-            padding: 15px;
-            box-shadow: 0 25px 40px rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.15);
-        }
-
-        canvas {
-            display: block;
-            margin: 0 auto;
-            border-radius: 24px;
-            background: #11161f;
-            width: 100%;
-            height: auto;
-            touch-action: none;
-            cursor: pointer;
-        }
-
-        .info-panel {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            margin: 10px 10px 8px 10px;
-            flex-wrap: wrap;
-        }
-
-        .stats {
-            display: flex;
-            gap: 12px;
-            background: rgba(0,0,0,0.6);
-            padding: 4px 12px;
-            border-radius: 60px;
-        }
-
-        .stat {
-            font-weight: 700;
-            font-size: 0.8rem;
-        }
-
-        .stat span:first-child {
-            color: #aab3cf;
-            font-size: 0.6rem;
-            text-transform: uppercase;
-            margin-right: 4px;
-        }
-
-        .stat span:last-child {
-            color: #f3e9c0;
-            font-size: 1.1rem;
-            font-weight: 800;
-            font-family: monospace;
-        }
-
-        .difficulty-bar {
-            display: flex;
-            gap: 5px;
-            background: rgba(0,0,0,0.5);
-            padding: 4px 10px;
-            border-radius: 60px;
-            flex-wrap: wrap;
-        }
-
-        .diff-btn {
-            background: #1e2438;
-            border: none;
-            font-family: inherit;
-            font-weight: bold;
-            font-size: 0.7rem;
-            padding: 4px 10px;
-            border-radius: 40px;
-            color: #cbd5ff;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .diff-btn.active {
-            background: #ff66aa;
-            color: white;
-            box-shadow: 0 0 12px #ff66aa80;
-        }
-
-        .action-area {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        button {
-            background: #292f42;
-            border: none;
-            font-family: inherit;
-            font-weight: bold;
-            font-size: 0.8rem;
-            padding: 6px 16px;
-            border-radius: 60px;
-            color: #eff3ff;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        button:active {
-            transform: translateY(2px);
-        }
-
-        .result-message {
-            text-align: center;
-            margin-top: 10px;
-            font-weight: 700;
-            background: #00000066;
-            padding: 4px 10px;
-            border-radius: 40px;
-            display: inline-block;
-            font-size: 0.8rem;
-        }
-
-        .footer-meta {
-            text-align: center;
-            font-size: 0.55rem;
-            color: #7f8aa8;
-            margin-top: 8px;
         }
 
         .floating-judgement {
@@ -329,15 +252,105 @@
             border-radius: 60px;
             font-weight: bold;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
+        }
+
+        .beatmap-list {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a1a2e;
+            border-radius: 32px;
+            padding: 30px;
+            max-width: 420px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1000;
+            border: 2px solid #ff88cc;
+            box-shadow: 0 0 40px rgba(255, 136, 204, 0.3);
+            display: none;
+        }
+
+        .beatmap-list.active {
+            display: block;
+        }
+
+        .beatmap-list h3 {
+            color: #ffd966;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .beatmap-item {
+            background: #2a2342;
+            padding: 10px 16px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border: 1px solid #4a4a6a;
+        }
+
+        .beatmap-item:hover {
+            border-color: #ff66aa;
+        }
+
+        .beatmap-item .name {
+            color: #f0e6ff;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+
+        .beatmap-item .info {
+            color: #aab3cf;
+            font-size: 0.65rem;
+        }
+
+        .beatmap-item .btn-group {
+            display: flex;
+            gap: 4px;
+        }
+
+        .beatmap-item button {
+            border: none;
+            color: white;
+            border-radius: 40px;
+            padding: 2px 10px;
+            cursor: pointer;
+            font-size: 0.65rem;
+        }
+
+        .beatmap-item .load-btn { background: #66cc88; }
+        .beatmap-item .export-btn { background: #ffaa44; color: #1a1a2e; }
+        .beatmap-item .delete-btn { background: #ff3366; }
+
+        .close-list {
+            background: #ff3366;
+            border: none;
+            color: white;
+            border-radius: 40px;
+            padding: 8px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .file-input-hidden {
+            display: none;
         }
 
         @media (max-width: 768px) {
             body { padding: 5px; }
             .floating-judgement { font-size: 1.2rem; }
             .death-title { font-size: 2rem; }
-            .quiz-container { padding: 20px 15px; }
-            .quiz-question { font-size: 1.1rem; }
+            .controls { gap: 4px; }
+            .controls button { font-size: 0.6rem; padding: 3px 8px; }
+            .controls input { font-size: 0.6rem; padding: 2px 6px; min-width: 50px; }
+            .beatmap-list { padding: 20px; }
         }
     </style>
 </head>
@@ -346,36 +359,52 @@
 <div class="accuracy-warning" id="accuracyWarning">ACC: 100%</div>
 <div class="difficulty-indicator" id="difficultyIndicator">NORMAL</div>
 
-<div class="game-container">
-    <canvas id="gameCanvas" width="800" height="500"></canvas>
-    
-    <div class="info-panel">
-        <div class="stats">
-            <div class="stat"><span>SCORE</span><span id="scoreValue">0</span></div>
-            <div class="stat"><span>ACC</span><span id="accValue">100</span><span style="font-size:0.7rem">%</span></div>
-            <div class="stat"><span>COMBO</span><span id="comboValue">0</span></div>
+<div class="main-container">
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        
+        <div class="controls">
+            <button class="primary" id="playBtn">PLAY</button>
+            <button id="buildBtn">BUILD</button>
+            <button class="success" id="saveBtn">SAVE</button>
+            <button id="loadBtn">LOAD</button>
+            <button id="exportBtn" class="warning">EXPORT</button>
+            <button id="importBtn" class="warning">IMPORT</button>
+            <button class="danger" id="clearBtn">CLEAR</button>
+            
+            <label>BPM</label>
+            <input type="number" id="bpmInput" value="120" min="60" max="300" style="width:45px">
+            
+            <label>NAME</label>
+            <input type="text" id="beatmapNameInput" value="My Beatmap" style="width:80px">
+            
+            <label>MUSIC</label>
+            <input type="file" id="musicFileInput" accept="audio/*" style="width:100px;padding:2px 6px;font-size:0.6rem;">
         </div>
-        <div class="difficulty-bar" id="difficultySelector">
-            <button class="diff-btn" data-diff="0">EASY</button>
-            <button class="diff-btn" data-diff="1">NORMAL</button>
-            <button class="diff-btn" data-diff="2">HARD</button>
-            <button class="diff-btn" data-diff="3">INSANE</button>
+        
+        <div class="status-bar">
+            <span id="noteCount">NOTES: 0</span>
+            <span id="beatmapStatus">STATUS: IDLE</span>
+            <span id="musicStatus">NO MUSIC</span>
         </div>
-    </div>
-
-    <div class="action-area">
-        <button id="resetGameBtn">NEW GAME</button>
-        <button id="restartSameBtn">RESTART</button>
-    </div>
-    <div style="display: flex; justify-content: center;">
-        <div id="gameStatusMsg" class="result-message">Loading questions...</div>
-    </div>
-    <div class="footer-meta">
-        TAP single circles • DOUBLE TAP note pairs • ACCURACY below 60% = GAME OVER
     </div>
 </div>
 
+<!-- Hidden file input for import -->
+<input type="file" id="importFileInput" class="file-input-hidden" accept=".osubm">
+
+<!-- Beatmap List Modal -->
+<div class="beatmap-list" id="beatmapList">
+    <h3>SAVED BEATMAPS</h3>
+    <div id="beatmapListContent"></div>
+    <button class="close-list" id="closeListBtn">CLOSE</button>
+</div>
+
 <script>
+    // ============================================
+    // BEATMAP BUILDER + PLAYER + EXPORT/IMPORT
+    // ============================================
+    
     const DEFAULT_QUESTIONS = [
         { "question": "How many rooms does Tin Shing Court have?", "options": ["1", "2", "3", "4"], "correct": 2 },
         { "question": "When was Tin Shing Court finished building?", "options": ["1986", "1987", "1999", "2000"], "correct": 2 },
@@ -383,10 +412,10 @@
     ];
 
     const difficulties = [
-        { name: "EASY",   circleCount: 20, doubleCount: 5, approachTime: 1300, radius: 40, timingWindow: 1.3 },
-        { name: "NORMAL", circleCount: 30, doubleCount: 8, approachTime: 1000, radius: 35, timingWindow: 1.0 },
-        { name: "HARD",   circleCount: 40, doubleCount: 12, approachTime: 700, radius: 30, timingWindow: 0.8 },
-        { name: "INSANE", circleCount: 50, doubleCount: 18, approachTime: 500, radius: 27, timingWindow: 0.65 }
+        { name: "EASY",   timingWindow: 1.3, radius: 38 },
+        { name: "NORMAL", timingWindow: 1.0, radius: 34 },
+        { name: "HARD",   timingWindow: 0.8, radius: 30 },
+        { name: "INSANE", timingWindow: 0.65, radius: 27 }
     ];
     
     const TIMING = { perfect: 45, good: 90, ok: 160 };
@@ -397,7 +426,6 @@
     let canvas, ctx;
     let activeCircles = [];
     let activeDoubles = [];
-    let doubleTapProgress = {}; // Track double tap progress per note
     let score = 0, combo = 0, maxCombo = 0, totalHits = 0, misses = 0;
     let gameActive = false, gameStarted = false;
     let currentDifficulty = 1;
@@ -405,6 +433,18 @@
     let animationId = null;
     let allNotes = [];
     let nextNoteIndex = 0;
+    
+    // Beatmap builder
+    let isBuilding = false;
+    let buildingNotes = [];
+    let buildingDoubles = [];
+    let bpm = 120;
+    let beatmapName = 'My Beatmap';
+    let audioContext = null;
+    let audioBuffer = null;
+    let audioSource = null;
+    let musicFile = null;
+    let musicName = 'No Music';
     
     let quizActive = true, gameLocked = true;
     let questionBank = [];
@@ -415,223 +455,574 @@
     canvasElem.height = 500;
     ctx = canvasElem.getContext('2d');
     
-    function showDeathScreen() {
-        if (deathTriggered) return;
-        deathTriggered = true;
-        
-        const overlay = document.createElement('div');
-        overlay.className = 'death-overlay';
-        overlay.innerHTML = `
-            <div class="death-container">
-                <div class="death-title">GAME OVER</div>
-                <div class="death-subtitle">accuracy below 60%</div>
-                <button class="death-reload" id="deathReloadBtn">RETRY</button>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-        
-        document.getElementById('deathReloadBtn').onclick = () => location.reload();
-        setTimeout(() => location.reload(), 3000);
+    // ============================================
+    // AUDIO
+    // ============================================
+    function initAudio() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return audioContext;
     }
     
-    function showMessage(text, x, y, color) {
-        const div = document.createElement('div');
-        div.className = 'floating-judgement';
-        div.textContent = text;
-        div.style.left = (x - 40) + 'px';
-        div.style.top = (y - 40) + 'px';
-        div.style.color = color;
-        document.body.appendChild(div);
-        setTimeout(() => div.remove(), 700);
+    function loadMusicFile(file) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const ctx = initAudio();
+                const arrayBuffer = e.target.result;
+                audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+                musicFile = file;
+                musicName = file.name;
+                document.getElementById('musicStatus').innerHTML = musicName;
+                document.getElementById('beatmapStatus').innerHTML = 'MUSIC LOADED';
+            } catch (err) {
+                console.error('Error loading music:', err);
+                document.getElementById('musicStatus').innerHTML = 'ERROR';
+            }
+        };
+        reader.readAsArrayBuffer(file);
     }
     
-    function updateAccuracy() {
-        let acc = totalHits + misses === 0 ? 100 : (totalHits / (totalHits + misses)) * 100;
-        document.getElementById('accuracyWarning').innerHTML = `ACC: ${acc.toFixed(1)}%`;
-        document.getElementById('accValue').innerText = acc.toFixed(1);
+    function playMusic() {
+        if (!audioBuffer) return;
+        try {
+            const ctx = initAudio();
+            if (audioSource) {
+                audioSource.stop();
+                audioSource.disconnect();
+            }
+            audioSource = ctx.createBufferSource();
+            audioSource.buffer = audioBuffer;
+            audioSource.connect(ctx.destination);
+            audioSource.start(0);
+            document.getElementById('musicStatus').innerHTML = 'PLAYING: ' + musicName;
+        } catch (err) {
+            console.error('Error playing music:', err);
+        }
+    }
+    
+    function stopMusic() {
+        if (audioSource) {
+            try {
+                audioSource.stop();
+                audioSource.disconnect();
+            } catch(e) {}
+            audioSource = null;
+        }
+    }
+    
+    // ============================================
+    // BEATMAP STORAGE (localStorage)
+    // ============================================
+    function getBeatmapData() {
+        return {
+            name: document.getElementById('beatmapNameInput').value || 'My Beatmap',
+            bpm: parseInt(document.getElementById('bpmInput').value) || 120,
+            circles: buildingNotes.map(n => ({ x: n.x, y: n.y, time: n.time })),
+            doubles: buildingDoubles.map(d => ({ 
+                x1: d.x1, y1: d.y1, x2: d.x2, y2: d.y2, time: d.time 
+            })),
+            musicName: musicName || 'No Music',
+            version: '1.0'
+        };
+    }
+    
+    function saveBeatmap() {
+        const data = getBeatmapData();
+        const name = data.name;
         
-        if (acc < 60 && gameActive && gameStarted && totalHits + misses > 10 && !deathTriggered) {
+        let beatmaps = JSON.parse(localStorage.getItem('osuBeatmaps') || '[]');
+        const existingIndex = beatmaps.findIndex(b => b.name === name);
+        if (existingIndex >= 0) {
+            beatmaps[existingIndex] = data;
+        } else {
+            beatmaps.push(data);
+        }
+        localStorage.setItem('osuBeatmaps', JSON.stringify(beatmaps));
+        document.getElementById('beatmapStatus').innerHTML = 'SAVED: ' + name;
+        updateNoteCount();
+    }
+    
+    function loadBeatmapList() {
+        const beatmaps = JSON.parse(localStorage.getItem('osuBeatmaps') || '[]');
+        const container = document.getElementById('beatmapListContent');
+        
+        if (beatmaps.length === 0) {
+            container.innerHTML = '<p style="color:#aab3cf;text-align:center;">No saved beatmaps</p>';
+        } else {
+            container.innerHTML = beatmaps.map((b, idx) => `
+                <div class="beatmap-item">
+                    <div>
+                        <div class="name">${b.name}</div>
+                        <div class="info">BPM: ${b.bpm} | Notes: ${(b.circles || []).length + (b.doubles || []).length} | ${b.musicName || 'No Music'}</div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="load-btn" data-idx="${idx}">LOAD</button>
+                        <button class="export-btn" data-idx="${idx}">EXPORT</button>
+                        <button class="delete-btn" data-idx="${idx}">X</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.querySelectorAll('.load-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const idx = parseInt(btn.dataset.idx);
+                    loadBeatmapByIndex(idx);
+                    document.getElementById('beatmapList').classList.remove('active');
+                };
+            });
+            
+            container.querySelectorAll('.export-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const idx = parseInt(btn.dataset.idx);
+                    exportBeatmapByIndex(idx);
+                };
+            });
+            
+            container.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(btn.dataset.idx);
+                    let beatmaps = JSON.parse(localStorage.getItem('osuBeatmaps') || '[]');
+                    beatmaps.splice(idx, 1);
+                    localStorage.setItem('osuBeatmaps', JSON.stringify(beatmaps));
+                    loadBeatmapList();
+                };
+            });
+        }
+        
+        document.getElementById('beatmapList').classList.add('active');
+    }
+    
+    function loadBeatmapByIndex(idx) {
+        const beatmaps = JSON.parse(localStorage.getItem('osuBeatmaps') || '[]');
+        if (idx < 0 || idx >= beatmaps.length) return;
+        
+        const b = beatmaps[idx];
+        document.getElementById('beatmapNameInput').value = b.name;
+        document.getElementById('bpmInput').value = b.bpm;
+        
+        buildingNotes = (b.circles || []).map(c => ({
+            x: c.x, y: c.y, time: c.time, type: 'circle'
+        }));
+        
+        buildingDoubles = (b.doubles || []).map(d => ({
+            x1: d.x1, y1: d.y1, x2: d.x2, y2: d.y2, time: d.time, type: 'double'
+        }));
+        
+        musicName = b.musicName || 'No Music';
+        document.getElementById('musicStatus').innerHTML = musicName;
+        document.getElementById('beatmapStatus').innerHTML = 'LOADED: ' + b.name;
+        updateNoteCount();
+        drawBuilder();
+    }
+    
+    function clearBeatmap() {
+        if (isBuilding) {
+            buildingNotes = [];
+            buildingDoubles = [];
+            updateNoteCount();
+            document.getElementById('beatmapStatus').innerHTML = 'CLEARED';
+            drawBuilder();
+        }
+    }
+    
+    function updateNoteCount() {
+        const count = buildingNotes.length + buildingDoubles.length;
+        document.getElementById('noteCount').innerHTML = 'NOTES: ' + count;
+    }
+    
+    // ============================================
+    // EXPORT / IMPORT .osubm
+    // ============================================
+    function exportBeatmap() {
+        const data = getBeatmapData();
+        if (data.circles.length === 0 && data.doubles.length === 0) {
+            document.getElementById('beatmapStatus').innerHTML = 'ERROR: No notes to export';
+            return;
+        }
+        
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.name.replace(/[^a-zA-Z0-9]/g, '_') + '.osubm';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        document.getElementById('beatmapStatus').innerHTML = 'EXPORTED: ' + data.name;
+    }
+    
+    function exportBeatmapByIndex(idx) {
+        const beatmaps = JSON.parse(localStorage.getItem('osuBeatmaps') || '[]');
+        if (idx < 0 || idx >= beatmaps.length) return;
+        
+        const data = beatmaps[idx];
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.name.replace(/[^a-zA-Z0-9]/g, '_') + '.osubm';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    
+    function importBeatmap(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                
+                // Validate
+                if (!data.name || !data.bpm || (!data.circles && !data.doubles)) {
+                    document.getElementById('beatmapStatus').innerHTML = 'ERROR: Invalid .osubm file';
+                    return;
+                }
+                
+                document.getElementById('beatmapNameInput').value = data.name;
+                document.getElementById('bpmInput').value = data.bpm;
+                
+                buildingNotes = (data.circles || []).map(c => ({
+                    x: c.x, y: c.y, time: c.time, type: 'circle'
+                }));
+                
+                buildingDoubles = (data.doubles || []).map(d => ({
+                    x1: d.x1, y1: d.y1, x2: d.x2, y2: d.y2, time: d.time, type: 'double'
+                }));
+                
+                musicName = data.musicName || 'No Music';
+                document.getElementById('musicStatus').innerHTML = musicName;
+                document.getElementById('beatmapStatus').innerHTML = 'IMPORTED: ' + data.name;
+                updateNoteCount();
+                drawBuilder();
+                
+                // Auto-save imported beatmap
+                saveBeatmap();
+                document.getElementById('beatmapStatus').innerHTML = 'IMPORTED & SAVED: ' + data.name;
+                
+            } catch (err) {
+                console.error('Import error:', err);
+                document.getElementById('beatmapStatus').innerHTML = 'ERROR: Failed to import';
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+    // ============================================
+    // BUILDER MODE
+    // ============================================
+    function toggleBuilder() {
+        isBuilding = !isBuilding;
+        if (isBuilding) {
+            document.getElementById('beatmapStatus').innerHTML = 'BUILD MODE - TAP TO PLACE';
+            document.getElementById('buildBtn').style.background = '#ff66aa';
             gameActive = false;
             gameStarted = false;
-            showDeathScreen();
-        }
-        return acc;
-    }
-    
-    function updateUI() {
-        document.getElementById('scoreValue').innerText = Math.floor(score);
-        document.getElementById('comboValue').innerText = combo;
-        updateAccuracy();
-    }
-    
-    function generateNotes() {
-        const diff = difficulties[currentDifficulty];
-        const startOffset = 1500;
-        const endTime = GAME_DURATION;
-        const notes = [];
-        
-        // Single circles
-        for (let i = 0; i < diff.circleCount; i++) {
-            let t = startOffset + (i / diff.circleCount) * (endTime - startOffset - 500);
-            t += (Math.random() - 0.5) * 40;
-            
-            const margin = 70;
-            const x = margin + Math.random() * (canvasElem.width - margin * 2);
-            const y = margin + Math.random() * (canvasElem.height - margin * 2);
-            
-            notes.push({
-                type: 'circle',
-                time: t,
-                x: x, y: y,
-                radius: diff.radius,
-                approachTime: diff.approachTime,
-                hit: false,
-                id: Math.random()
-            });
-        }
-        
-        // Double tap notes - two circles close together
-        for (let i = 0; i < diff.doubleCount; i++) {
-            let t = startOffset + 800 + (i / diff.doubleCount) * (endTime - startOffset - 1000);
-            t += (Math.random() - 0.5) * 50;
-            
-            const margin = 70;
-            const centerX = margin + Math.random() * (canvasElem.width - margin * 2);
-            const centerY = margin + Math.random() * (canvasElem.height - margin * 2);
-            
-            // Two circles offset from each other
-            const offset = diff.radius * 1.5;
-            const angle = Math.random() * Math.PI * 2;
-            
-            const x1 = centerX + Math.cos(angle) * offset;
-            const y1 = centerY + Math.sin(angle) * offset;
-            const x2 = centerX + Math.cos(angle + Math.PI) * offset;
-            const y2 = centerY + Math.sin(angle + Math.PI) * offset;
-            
-            // Make sure both are in bounds
-            const margin2 = 80;
-            const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
-            
-            notes.push({
-                type: 'double',
-                time: t,
-                x1: clamp(x1, margin2, canvasElem.width - margin2),
-                y1: clamp(y1, margin2, canvasElem.height - margin2),
-                x2: clamp(x2, margin2, canvasElem.width - margin2),
-                y2: clamp(y2, margin2, canvasElem.height - margin2),
-                radius: diff.radius - 2,
-                approachTime: diff.approachTime,
-                hit: false,
-                tapped: 0, // 0 = none, 1 = first tapped, 2 = both tapped
-                id: Math.random()
-            });
-        }
-        
-        notes.sort((a,b) => a.time - b.time);
-        return notes;
-    }
-    
-    function startGame() {
-        quizActive = false;
-        gameLocked = false;
-        document.querySelectorAll('.diff-btn').forEach(btn => {
-            btn.style.pointerEvents = 'auto';
-            btn.style.opacity = '1';
-        });
-        
-        let countdown = 3;
-        const interval = setInterval(() => {
-            if (countdown > 0) {
-                document.getElementById('gameStatusMsg').innerHTML = `${countdown}...`;
-                countdown--;
-            } else {
-                clearInterval(interval);
-                document.getElementById('gameStatusMsg').innerHTML = 'GO!';
-                gameStarted = true;
-                gameActive = true;
-                deathTriggered = false;
-                allNotes = generateNotes();
-                nextNoteIndex = 0;
-                activeCircles = [];
-                activeDoubles = [];
-                doubleTapProgress = {};
-                score = 0; combo = 0; maxCombo = 0; totalHits = 0; misses = 0;
-                gameStartTime = performance.now();
-                updateUI();
-                
-                if (animationId) cancelAnimationFrame(animationId);
-                function update() {
-                    if (!gameStarted) { draw(); animationId = requestAnimationFrame(update); return; }
-                    
-                    const now = performance.now();
-                    const elapsed = now - gameStartTime;
-                    
-                    if (gameActive && !quizActive && !deathTriggered) {
-                        while (nextNoteIndex < allNotes.length && elapsed >= allNotes[nextNoteIndex].time - allNotes[nextNoteIndex].approachTime) {
-                            const note = allNotes[nextNoteIndex];
-                            if (note.type === 'circle') {
-                                activeCircles.push({...note});
-                            } else if (note.type === 'double') {
-                                activeDoubles.push({...note});
-                                doubleTapProgress[note.id] = 0;
-                            }
-                            nextNoteIndex++;
-                        }
-                        
-                        const timingOk = TIMING.ok * difficulties[currentDifficulty].timingWindow;
-                        
-                        // Check single circle misses
-                        for (let i = 0; i < activeCircles.length; i++) {
-                            const note = activeCircles[i];
-                            if (!note.hit && elapsed > note.time + timingOk + 50) {
-                                note.hit = true;
-                                combo = 0;
-                                misses++;
-                                updateUI();
-                            }
-                        }
-                        activeCircles = activeCircles.filter(n => !n.hit);
-                        
-                        // Check double tap misses
-                        for (let i = 0; i < activeDoubles.length; i++) {
-                            const note = activeDoubles[i];
-                            if (!note.hit && elapsed > note.time + timingOk + 50) {
-                                note.hit = true;
-                                combo = 0;
-                                misses++;
-                                updateUI();
-                                // Show miss on both circles
-                                showMessage("MISS", note.x1, note.y1, "#ff6666");
-                                showMessage("MISS", note.x2, note.y2, "#ff6666");
-                            }
-                        }
-                        activeDoubles = activeDoubles.filter(n => !n.hit);
-                    }
-                    
-                    draw();
-                    animationId = requestAnimationFrame(update);
-                }
-                update();
+            if (animationId) cancelAnimationFrame(animationId);
+            drawBuilder();
+            stopMusic();
+        } else {
+            document.getElementById('beatmapStatus').innerHTML = 'IDLE';
+            document.getElementById('buildBtn').style.background = '';
+            if (buildingNotes.length > 0 || buildingDoubles.length > 0) {
+                document.getElementById('playBtn').style.background = '#66cc88';
             }
-        }, 1000);
+        }
     }
     
+    function drawBuilder() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvasElem.width, canvasElem.height);
+        ctx.fillStyle = '#11161f';
+        ctx.fillRect(0, 0, canvasElem.width, canvasElem.height);
+        
+        // Grid
+        ctx.strokeStyle = '#1a1a2e';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < canvasElem.width; x += 40) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvasElem.height);
+            ctx.stroke();
+        }
+        for (let y = 0; y < canvasElem.height; y += 40) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvasElem.width, y);
+            ctx.stroke();
+        }
+        
+        // Beat lines
+        const bpmVal = parseInt(document.getElementById('bpmInput').value) || 120;
+        const beatInterval = 60000 / bpmVal;
+        for (let t = 0; t < 30000; t += beatInterval) {
+            const x = (t / 30000) * (canvasElem.width - 40) + 20;
+            ctx.fillStyle = '#2a2a4a';
+            ctx.fillRect(x - 1, canvasElem.height - 30, 2, 20);
+        }
+        
+        // Draw building notes
+        for (const n of buildingNotes) {
+            const x = (n.time / 30000) * (canvasElem.width - 40) + 20;
+            const y = n.y || 250;
+            ctx.beginPath();
+            ctx.arc(x, y, 12, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff66aa';
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('●', x, y);
+        }
+        
+        for (const d of buildingDoubles) {
+            const x1 = (d.time / 30000) * (canvasElem.width - 40) + 20;
+            const x2 = x1 + 30;
+            ctx.beginPath();
+            ctx.arc(x1, d.y1 || 250, 10, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff88cc';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x2, d.y2 || 250, 10, 0, Math.PI * 2);
+            ctx.fillStyle = '#88aaff';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(x1, (d.y1 || 250));
+            ctx.lineTo(x2, (d.y2 || 250));
+            ctx.strokeStyle = '#8888cc';
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'white';
+            ctx.font = '8px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('1', x1, (d.y1 || 250));
+            ctx.fillText('2', x2, (d.y2 || 250));
+        }
+        
+        // Info
+        ctx.fillStyle = '#aab3cf';
+        ctx.font = '12px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('BUILDER MODE | BPM: ' + bpmVal + ' | Notes: ' + (buildingNotes.length + buildingDoubles.length), 20, 30);
+        ctx.fillText('TAP: Place note | TAP near note: Double tap | CLICK note: Delete', 20, 50);
+    }
+    
+    function addNoteToBuilder(canvasX, canvasY) {
+        if (!isBuilding) return;
+        
+        const bpmVal = parseInt(document.getElementById('bpmInput').value) || 120;
+        const beatInterval = 60000 / bpmVal;
+        const time = (canvasX - 20) / (canvasElem.width - 40) * 30000;
+        
+        // Check if clicking existing note (delete)
+        for (let i = 0; i < buildingNotes.length; i++) {
+            const n = buildingNotes[i];
+            const nx = (n.time / 30000) * (canvasElem.width - 40) + 20;
+            if (Math.hypot(nx - canvasX, n.y - canvasY) < 20) {
+                buildingNotes.splice(i, 1);
+                updateNoteCount();
+                drawBuilder();
+                return;
+            }
+        }
+        
+        for (let i = 0; i < buildingDoubles.length; i++) {
+            const d = buildingDoubles[i];
+            const dx = (d.time / 30000) * (canvasElem.width - 40) + 20;
+            if (Math.hypot(dx - canvasX, d.y1 - canvasY) < 20) {
+                buildingDoubles.splice(i, 1);
+                updateNoteCount();
+                drawBuilder();
+                return;
+            }
+            if (Math.hypot(dx + 30 - canvasX, d.y2 - canvasY) < 20) {
+                buildingDoubles.splice(i, 1);
+                updateNoteCount();
+                drawBuilder();
+                return;
+            }
+        }
+        
+        // Add new note
+        const y = Math.min(canvasElem.height - 40, Math.max(40, canvasY));
+        const snapTime = Math.round(time / beatInterval) * beatInterval;
+        const clampedTime = Math.min(29000, Math.max(500, snapTime));
+        
+        // Check for double tap
+        let isDouble = false;
+        for (const n of buildingNotes) {
+            if (Math.abs(n.time - clampedTime) < 100 && Math.abs(n.y - y) < 60) {
+                const existingIdx = buildingNotes.indexOf(n);
+                if (existingIdx >= 0) {
+                    buildingNotes.splice(existingIdx, 1);
+                    buildingDoubles.push({
+                        x1: (clampedTime / 30000) * (canvasElem.width - 40) + 20,
+                        y1: n.y,
+                        x2: (clampedTime / 30000) * (canvasElem.width - 40) + 20 + 30,
+                        y2: y,
+                        time: clampedTime,
+                        type: 'double'
+                    });
+                    isDouble = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!isDouble) {
+            buildingNotes.push({
+                x: (clampedTime / 30000) * (canvasElem.width - 40) + 20,
+                y: y,
+                time: clampedTime,
+                type: 'circle'
+            });
+        }
+        
+        updateNoteCount();
+        drawBuilder();
+        document.getElementById('beatmapStatus').innerHTML = 'PLACED NOTE at ' + Math.round(clampedTime) + 'ms';
+    }
+    
+    // ============================================
+    // GAME PLAY
+    // ============================================
+    function startGameFromBuilder() {
+        if (buildingNotes.length === 0 && buildingDoubles.length === 0) {
+            document.getElementById('beatmapStatus').innerHTML = 'ERROR: No notes to play';
+            return;
+        }
+        
+        if (isBuilding) {
+            toggleBuilder();
+        }
+        
+        stopMusic();
+        
+        allNotes = [];
+        for (const n of buildingNotes) {
+            allNotes.push({
+                type: 'circle',
+                time: n.time,
+                x: (n.time / 30000) * (canvasElem.width - 40) + 20,
+                y: n.y,
+                radius: difficulties[currentDifficulty].radius,
+                approachTime: 1000,
+                hit: false,
+                id: Math.random()
+            });
+        }
+        
+        for (const d of buildingDoubles) {
+            const cx = (d.time / 30000) * (canvasElem.width - 40) + 20;
+            allNotes.push({
+                type: 'double',
+                time: d.time,
+                x1: cx,
+                y1: d.y1,
+                x2: cx + 30,
+                y2: d.y2,
+                radius: difficulties[currentDifficulty].radius - 2,
+                approachTime: 1000,
+                hit: false,
+                tapped: 0,
+                id: Math.random()
+            });
+        }
+        
+        allNotes.sort((a,b) => a.time - b.time);
+        
+        gameStarted = true;
+        gameActive = true;
+        deathTriggered = false;
+        nextNoteIndex = 0;
+        activeCircles = [];
+        activeDoubles = [];
+        score = 0; combo = 0; maxCombo = 0; totalHits = 0; misses = 0;
+        gameStartTime = performance.now();
+        updateUI();
+        document.getElementById('beatmapStatus').innerHTML = 'PLAYING...';
+        document.getElementById('playBtn').style.background = '#ff3366';
+        
+        playMusic();
+        
+        if (animationId) cancelAnimationFrame(animationId);
+        function update() {
+            if (!gameStarted) { draw(); animationId = requestAnimationFrame(update); return; }
+            
+            const now = performance.now();
+            const elapsed = now - gameStartTime;
+            
+            if (gameActive && !deathTriggered) {
+                while (nextNoteIndex < allNotes.length && elapsed >= allNotes[nextNoteIndex].time - allNotes[nextNoteIndex].approachTime) {
+                    const note = allNotes[nextNoteIndex];
+                    if (note.type === 'circle') {
+                        activeCircles.push({...note});
+                    } else if (note.type === 'double') {
+                        activeDoubles.push({...note});
+                    }
+                    nextNoteIndex++;
+                }
+                
+                const timingOk = TIMING.ok * difficulties[currentDifficulty].timingWindow;
+                
+                for (let i = 0; i < activeCircles.length; i++) {
+                    const note = activeCircles[i];
+                    if (!note.hit && elapsed > note.time + timingOk + 50) {
+                        note.hit = true;
+                        combo = 0;
+                        misses++;
+                        updateUI();
+                    }
+                }
+                activeCircles = activeCircles.filter(n => !n.hit);
+                
+                for (let i = 0; i < activeDoubles.length; i++) {
+                    const note = activeDoubles[i];
+                    if (!note.hit && elapsed > note.time + timingOk + 50) {
+                        note.hit = true;
+                        combo = 0;
+                        misses++;
+                        updateUI();
+                    }
+                }
+                activeDoubles = activeDoubles.filter(n => !n.hit);
+            }
+            
+            draw();
+            animationId = requestAnimationFrame(update);
+        }
+        update();
+    }
+    
+    // ============================================
+    // DRAW FUNCTIONS
+    // ============================================
     function draw() {
         if (!ctx) return;
         ctx.clearRect(0, 0, canvasElem.width, canvasElem.height);
-        
         ctx.fillStyle = '#11161f';
         ctx.fillRect(0, 0, canvasElem.width, canvasElem.height);
         
         const now = performance.now();
         const elapsed = now - gameStartTime;
         
-        // Draw double tap notes
+        // Double tap notes
         for (const d of activeDoubles) {
             const timeToHit = d.time - elapsed;
             const alpha = Math.min(1, Math.max(0.3, 1 - (d.approachTime - timeToHit) / d.approachTime * 0.5));
             
-            // Draw connecting line
             ctx.beginPath();
             ctx.moveTo(d.x1, d.y1);
             ctx.lineTo(d.x2, d.y2);
@@ -641,16 +1032,13 @@
             ctx.stroke();
             ctx.setLineDash([]);
             
-            // Draw both circles
             const progress = Math.min(1, Math.max(0, 1 - timeToHit / d.approachTime));
             const scale = 1.8 - progress * 0.8;
             
-            // Circle 1
-            const radius1 = d.radius * scale;
             const isTapped1 = d.tapped >= 1;
             
             ctx.beginPath();
-            ctx.arc(d.x1, d.y1, radius1, 0, Math.PI * 2);
+            ctx.arc(d.x1, d.y1, d.radius * scale, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255, 180, 220, ${isTapped1 ? 0.3 : alpha})`;
             ctx.lineWidth = 3;
             ctx.stroke();
@@ -660,19 +1048,10 @@
             ctx.fillStyle = isTapped1 ? `rgba(100, 200, 100, ${alpha})` : `rgba(255, 100, 160, ${alpha})`;
             ctx.fill();
             
-            if (isTapped1) {
-                ctx.beginPath();
-                ctx.arc(d.x1, d.y1, d.radius - 6, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(150, 255, 150, ${alpha})`;
-                ctx.fill();
-            }
-            
-            // Circle 2
-            const radius2 = d.radius * scale;
             const isTapped2 = d.tapped >= 2;
             
             ctx.beginPath();
-            ctx.arc(d.x2, d.y2, radius2, 0, Math.PI * 2);
+            ctx.arc(d.x2, d.y2, d.radius * scale, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255, 180, 220, ${isTapped2 ? 0.3 : alpha})`;
             ctx.lineWidth = 3;
             ctx.stroke();
@@ -682,14 +1061,6 @@
             ctx.fillStyle = isTapped2 ? `rgba(100, 200, 100, ${alpha})` : `rgba(100, 150, 200, ${alpha})`;
             ctx.fill();
             
-            if (isTapped2) {
-                ctx.beginPath();
-                ctx.arc(d.x2, d.y2, d.radius - 6, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(150, 255, 150, ${alpha})`;
-                ctx.fill();
-            }
-            
-            // Number indicators
             ctx.fillStyle = `rgba(255,255,255,${alpha})`;
             ctx.font = `bold ${d.radius - 4}px Arial`;
             ctx.textAlign = "center";
@@ -698,7 +1069,7 @@
             if (!isTapped2) ctx.fillText("2", d.x2, d.y2 + 1);
         }
         
-        // Draw single circles
+        // Single circles
         for (const c of activeCircles) {
             const timeToHit = c.time - elapsed;
             let scale = 1.0;
@@ -737,7 +1108,6 @@
             ctx.shadowBlur = 0;
         }
         
-        // Progress bar
         const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION));
         ctx.fillStyle = "#ff66aa30";
         ctx.fillRect(20, canvasElem.height - 20, canvasElem.width - 40, 6);
@@ -755,13 +1125,22 @@
         };
     }
     
+    // ============================================
+    // GAME TAP HANDLER
+    // ============================================
     function handleTap(clientX, clientY) {
+        const {x, y} = getCanvasCoords(clientX, clientY);
+        
+        if (isBuilding) {
+            addNoteToBuilder(x, y);
+            return;
+        }
+        
         if (!gameActive || gameLocked || quizActive || !gameStarted || deathTriggered) return;
         
-        const {x, y} = getCanvasCoords(clientX, clientY);
         const elapsed = performance.now() - gameStartTime;
         
-        // Check single circles first
+        // Single circles
         for (let i = 0; i < activeCircles.length; i++) {
             const c = activeCircles[i];
             const dx = c.x - x;
@@ -800,7 +1179,7 @@
             }
         }
         
-        // Check double tap notes
+        // Double tap notes
         for (let i = 0; i < activeDoubles.length; i++) {
             const d = activeDoubles[i];
             if (d.hit) continue;
@@ -809,12 +1188,10 @@
             const scale = difficulties[currentDifficulty].timingWindow;
             if (timeDiff > TIMING.ok * scale) continue;
             
-            // Check if tapping circle 1
             const dx1 = d.x1 - x;
             const dy1 = d.y1 - y;
             const dist1 = Math.hypot(dx1, dy1);
             
-            // Check if tapping circle 2
             const dx2 = d.x2 - x;
             const dy2 = d.y2 - y;
             const dist2 = Math.hypot(dx2, dy2);
@@ -823,20 +1200,16 @@
             const tappedCircle2 = dist2 <= d.radius * 1.5;
             
             if (tappedCircle1 && d.tapped === 0) {
-                // First tap
                 d.tapped = 1;
                 showMessage("1", clientX, clientY, "#88ff88");
                 return;
             } else if (tappedCircle1 && d.tapped === 1) {
-                // Already tapped first, ignore
                 return;
             } else if (tappedCircle2 && d.tapped === 0) {
-                // Can tap second first, but mark as tapped 1
                 d.tapped = 1;
                 showMessage("1", clientX, clientY, "#88ff88");
                 return;
             } else if (tappedCircle2 && d.tapped === 1) {
-                // Second tap - COMPLETE!
                 d.tapped = 2;
                 d.hit = true;
                 
@@ -848,73 +1221,128 @@
                 updateUI();
                 showMessage("DOUBLE!", clientX, clientY, "#ff88ff");
                 
-                // Remove from active
                 const index = activeDoubles.findIndex(dn => dn.id === d.id);
                 if (index !== -1) activeDoubles.splice(index, 1);
                 return;
             }
         }
         
-        // Miss
         combo = 0;
         misses++;
         updateUI();
         showMessage("MISS", clientX, clientY, "#ff6666");
     }
     
-    // Touch events
+    function showMessage(text, x, y, color) {
+        const div = document.createElement('div');
+        div.className = 'floating-judgement';
+        div.textContent = text;
+        div.style.left = (x - 40) + 'px';
+        div.style.top = (y - 40) + 'px';
+        div.style.color = color;
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 700);
+    }
+    
+    function updateAccuracy() {
+        let acc = totalHits + misses === 0 ? 100 : (totalHits / (totalHits + misses)) * 100;
+        document.getElementById('accuracyWarning').innerHTML = 'ACC: ' + acc.toFixed(1) + '%';
+        document.getElementById('accValue').innerText = acc.toFixed(1);
+        
+        if (acc < 60 && gameActive && gameStarted && totalHits + misses > 10 && !deathTriggered) {
+            gameActive = false;
+            gameStarted = false;
+            showDeathScreen();
+        }
+        return acc;
+    }
+    
+    function showDeathScreen() {
+        if (deathTriggered) return;
+        deathTriggered = true;
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'death-overlay';
+        overlay.innerHTML = `
+            <div class="death-container">
+                <div class="death-title">GAME OVER</div>
+                <div class="death-subtitle">accuracy below 60%</div>
+                <button class="death-reload" id="deathReloadBtn">RETRY</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        document.getElementById('deathReloadBtn').onclick = () => location.reload();
+        setTimeout(() => location.reload(), 3000);
+    }
+    
+    function updateUI() {
+        document.getElementById('scoreValue').innerText = Math.floor(score);
+        document.getElementById('comboValue').innerText = combo;
+        updateAccuracy();
+    }
+    
+    // ============================================
+    // EVENTS
+    // ============================================
+    
     canvasElem.addEventListener('touchstart', (e) => {
         e.preventDefault();
         const touch = e.touches[0];
         if (touch) handleTap(touch.clientX, touch.clientY);
     }, { passive: false });
     
-    canvasElem.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-    }, { passive: false });
-    
-    canvasElem.addEventListener('touchend', (e) => {
-        e.preventDefault();
-    }, { passive: false });
-    
-    canvasElem.addEventListener('touchcancel', (e) => {
-        e.preventDefault();
-    }, { passive: false });
-    
-    // Mouse events
     canvasElem.addEventListener('mousedown', (e) => {
         e.preventDefault();
         handleTap(e.clientX, e.clientY);
     });
     
-    // UI Buttons
-    document.getElementById('resetGameBtn').onclick = () => location.reload();
-    document.getElementById('restartSameBtn').onclick = () => location.reload();
+    document.getElementById('playBtn').onclick = () => {
+        if (isBuilding) toggleBuilder();
+        startGameFromBuilder();
+    };
     
-    document.querySelectorAll('.diff-btn').forEach(btn => {
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            const newDiff = parseInt(btn.dataset.diff);
-            if (!isNaN(newDiff) && newDiff !== currentDifficulty) {
-                currentDifficulty = newDiff;
-                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                document.getElementById('difficultyIndicator').innerHTML = difficulties[currentDifficulty].name;
-                if (gameStarted && !gameLocked && !quizActive && !deathTriggered) location.reload();
-            }
-        };
-    });
+    document.getElementById('buildBtn').onclick = toggleBuilder;
+    document.getElementById('saveBtn').onclick = saveBeatmap;
+    document.getElementById('loadBtn').onclick = loadBeatmapList;
+    document.getElementById('clearBtn').onclick = clearBeatmap;
     
-    // Questions
+    document.getElementById('exportBtn').onclick = exportBeatmap;
+    
+    document.getElementById('importBtn').onclick = () => {
+        document.getElementById('importFileInput').click();
+    };
+    
+    document.getElementById('importFileInput').onchange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            importBeatmap(e.target.files[0]);
+        }
+        e.target.value = '';
+    };
+    
+    document.getElementById('closeListBtn').onclick = () => {
+        document.getElementById('beatmapList').classList.remove('active');
+    };
+    
+    document.getElementById('musicFileInput').onchange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            loadMusicFile(e.target.files[0]);
+        }
+    };
+    
+    document.getElementById('bpmInput').onchange = () => {
+        if (isBuilding) drawBuilder();
+    };
+    
+    // ============================================
+    // QUESTIONS & INIT
+    // ============================================
     async function loadQuestions() {
         try {
             const response = await fetch('questions.json');
             if (!response.ok) throw new Error('questions.json not found');
             const data = await response.json();
             questionBank = data.questions || data;
-            console.log('Loaded from questions.json');
         } catch (error) {
-            console.log('Using embedded questions');
             questionBank = DEFAULT_QUESTIONS;
         }
     }
@@ -969,7 +1397,15 @@
         showQuestion();
     }
     
-    // Init
+    function startGame() {
+        quizActive = false;
+        gameLocked = false;
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+        });
+    }
+    
     document.querySelectorAll('.diff-btn').forEach(btn => {
         if (parseInt(btn.dataset.diff) === currentDifficulty) btn.classList.add('active');
         btn.style.pointerEvents = 'none';
