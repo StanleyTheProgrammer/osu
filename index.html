@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Working Sliders · iPad Friendly</title>
+    <title>osu! · Long Sliders · No Emojis</title>
     <style>
         * {
             user-select: none;
@@ -371,12 +371,11 @@
         <div id="gameStatusMsg" class="result-message">Loading questions...</div>
     </div>
     <div class="footer-meta">
-        TAP circles • HOLD & DRAG on sliders • ACCURACY &lt;60% = GAME OVER
+        TAP circles • SLIDERS: start from either end • ACCURACY below 60% = GAME OVER
     </div>
 </div>
 
 <script>
-    // Embedded Questions
     const DEFAULT_QUESTIONS = [
         { "question": "How many rooms does Tin Shing Court have?", "options": ["1", "2", "3", "4"], "correct": 2 },
         { "question": "When was Tin Shing Court finished building?", "options": ["1986", "1987", "1999", "2000"], "correct": 2 },
@@ -467,14 +466,23 @@
         updateAccuracy();
     }
     
-    function generateSliderPath(startX, startY, endX, endY) {
+    // Generate LONG slider path with big curves
+    function generateLongSliderPath(startX, startY, endX, endY) {
         const points = [];
-        const steps = 30;
+        const steps = 40;
+        
+        const dist = Math.hypot(endX - startX, endY - startY);
+        const curveAmount = Math.min(100, dist * 0.5);
+        
+        const cp1x = startX + (endX - startX) * 0.2 + (Math.random() - 0.5) * curveAmount;
+        const cp1y = startY + (endY - startY) * 0.1 + (Math.random() - 0.5) * curveAmount * 0.7;
+        const cp2x = startX + (endX - startX) * 0.8 + (Math.random() - 0.5) * curveAmount;
+        const cp2y = startY + (endY - startY) * 0.9 + (Math.random() - 0.5) * curveAmount * 0.7;
         
         for (let i = 0; i <= steps; i++) {
             const t = i / steps;
-            const x = startX + (endX - startX) * t;
-            const y = startY + (endY - startY) * t + Math.sin(t * Math.PI * 2) * 20;
+            const x = Math.pow(1-t,3)*startX + 3*Math.pow(1-t,2)*t*cp1x + 3*(1-t)*Math.pow(t,2)*cp2x + Math.pow(t,3)*endX;
+            const y = Math.pow(1-t,3)*startY + 3*Math.pow(1-t,2)*t*cp1y + 3*(1-t)*Math.pow(t,2)*cp2y + Math.pow(t,3)*endY;
             points.push({x, y});
         }
         return points;
@@ -506,21 +514,36 @@
             });
         }
         
-        // Sliders
+        // Sliders - MUCH FARTHER DISTANCE
         for (let i = 0; i < diff.sliderCount; i++) {
             let t = startOffset + 800 + (i / diff.sliderCount) * (endTime - startOffset - 1000);
             t += (Math.random() - 0.5) * 50;
             
-            const margin = 70;
+            const margin = 60;
             const startX = margin + Math.random() * (canvasElem.width - margin * 2);
             const startY = margin + Math.random() * (canvasElem.height - margin * 2);
             
-            let endX = startX + (Math.random() - 0.5) * 200;
-            let endY = startY + (Math.random() - 0.5) * 150;
-            endX = Math.min(canvasElem.width - margin, Math.max(margin, endX));
-            endY = Math.min(canvasElem.height - margin, Math.max(margin, endY));
+            // Force long distance: min 250px, max 450px
+            let endX, endY;
+            let distance = 0;
+            let attempts = 0;
+            do {
+                const angle = Math.random() * Math.PI * 2;
+                const minDist = 250;
+                const maxDist = 420;
+                const dist = minDist + Math.random() * (maxDist - minDist);
+                
+                endX = startX + Math.cos(angle) * dist;
+                endY = startY + Math.sin(angle) * dist;
+                
+                endX = Math.min(canvasElem.width - margin, Math.max(margin, endX));
+                endY = Math.min(canvasElem.height - margin, Math.max(margin, endY));
+                
+                distance = Math.hypot(endX - startX, endY - startY);
+                attempts++;
+            } while (distance < 200 && attempts < 15);
             
-            const points = generateSliderPath(startX, startY, endX, endY);
+            const points = generateLongSliderPath(startX, startY, endX, endY);
             
             notes.push({
                 type: 'slider',
@@ -577,7 +600,6 @@
                     const elapsed = now - gameStartTime;
                     
                     if (gameActive && !quizActive && !deathTriggered) {
-                        // Spawn notes
                         while (nextNoteIndex < allNotes.length && elapsed >= allNotes[nextNoteIndex].time - allNotes[nextNoteIndex].approachTime) {
                             const note = allNotes[nextNoteIndex];
                             if (note.type === 'circle') activeCircles.push({...note});
@@ -585,7 +607,6 @@
                             nextNoteIndex++;
                         }
                         
-                        // Check circle misses
                         const timingOk = TIMING.ok * difficulties[currentDifficulty].timingWindow;
                         for (let i = 0; i < activeCircles.length; i++) {
                             const note = activeCircles[i];
@@ -598,7 +619,6 @@
                         }
                         activeCircles = activeCircles.filter(n => !n.hit);
                         
-                        // Check slider misses
                         for (let i = 0; i < activeSliders.length; i++) {
                             const slider = activeSliders[i];
                             if (!slider.hit && !slider.completed && elapsed > slider.time + timingOk + 150) {
@@ -629,7 +649,6 @@
         const now = performance.now();
         const elapsed = now - gameStartTime;
         
-        // Draw sliders
         for (const s of activeSliders) {
             const timeToHit = s.time - elapsed;
             const alpha = Math.min(1, Math.max(0.3, 1 - (s.approachTime - timeToHit) / s.approachTime * 0.5));
@@ -681,7 +700,7 @@
                 }
             }
             
-            // If dragging, show current position orb
+            // Current position orb
             if (draggingSlider && draggingSlider.id === s.id) {
                 let progressIndex;
                 if (dragDirection === 1) {
@@ -699,7 +718,6 @@
             }
         }
         
-        // Draw circles
         for (const c of activeCircles) {
             const timeToHit = c.time - elapsed;
             let scale = 1.0;
@@ -710,37 +728,33 @@
             
             const radius = c.radius * scale;
             
-            // Approach circle
             ctx.beginPath();
             ctx.arc(c.x, c.y, radius, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255, 180, 220, ${Math.min(1, 1 - timeToHit / c.approachTime)})`;
             ctx.lineWidth = 3;
             ctx.stroke();
             
-            // Hit circle
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.radius - 2, 0, Math.PI * 2);
             ctx.fillStyle = "#ff66aa";
             ctx.fill();
             
-            // Center
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.radius - 8, 0, Math.PI * 2);
             ctx.fillStyle = "#ffffff";
             ctx.fill();
         }
         
-        // Combo
         if (combo >= 5 && gameStarted && gameActive && !deathTriggered) {
             ctx.font = `bold 32px "Courier New"`;
             ctx.fillStyle = "#ffcc66";
             ctx.shadowBlur = 8;
             ctx.shadowColor = "#ff66aa";
+            ctx.textAlign = "left";
             ctx.fillText(`${combo}x`, canvasElem.width - 85, 65);
             ctx.shadowBlur = 0;
         }
         
-        // Progress bar
         const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION));
         ctx.fillStyle = "#ff66aa30";
         ctx.fillRect(20, canvasElem.height - 20, canvasElem.width - 40, 6);
@@ -803,7 +817,7 @@
             }
         }
         
-        // Check sliders - start from either end
+        // Slider start - BOTH ENDS
         for (let i = 0; i < activeSliders.length; i++) {
             const s = activeSliders[i];
             if (draggingSlider) break;
@@ -811,7 +825,10 @@
             const distStart = Math.hypot(s.startX - x, s.startY - y);
             const distEnd = Math.hypot(s.endX - x, s.endY - y);
             
-            if ((distStart <= s.radius * 1.8 || distEnd <= s.radius * 1.8) && !draggingSlider) {
+            const tappedStart = distStart <= s.radius * 1.8;
+            const tappedEnd = distEnd <= s.radius * 1.8;
+            
+            if ((tappedStart || tappedEnd) && !draggingSlider) {
                 const timeDiff = Math.abs(elapsed - s.time);
                 const scale = difficulties[currentDifficulty].timingWindow;
                 if (timeDiff <= TIMING.ok * scale) {
@@ -819,19 +836,18 @@
                     s.dragProgress = 0;
                     s.hit = true;
                     
-                    if (distStart <= distEnd) {
+                    if (tappedStart) {
                         dragDirection = 1;
                         showMessage("SLIDER", clientX, clientY, "#ff88ff");
                     } else {
                         dragDirection = -1;
-                        showMessage("SLIDER (REVERSE)", clientX, clientY, "#88aaff");
+                        showMessage("SLIDER REVERSE", clientX, clientY, "#88aaff");
                     }
                     return;
                 }
             }
         }
         
-        // Miss
         combo = 0;
         misses++;
         updateUI();
@@ -849,7 +865,6 @@
         let bestProgress = s.dragProgress;
         let found = false;
         
-        // Check all points on the path
         for (let i = 0; i < points.length; i++) {
             const dx = points[i].x - x;
             const dy = points[i].y - y;
@@ -899,10 +914,6 @@
         }
     }
     
-    // ============================================
-    // EVENT HANDLERS - IPAD FRIENDLY
-    // ============================================
-    
     // Touch events
     canvasElem.addEventListener('touchstart', (e) => {
         e.preventDefault();
@@ -926,7 +937,7 @@
         handleDragEnd();
     }, { passive: false });
     
-    // Mouse events (desktop)
+    // Mouse events
     let isMouseDown = false;
     canvasElem.addEventListener('mousedown', (e) => {
         e.preventDefault();
@@ -948,9 +959,7 @@
         }
     });
     
-    // ============================================
-    // UI BUTTONS
-    // ============================================
+    // UI Buttons
     document.getElementById('resetGameBtn').onclick = () => location.reload();
     document.getElementById('restartSameBtn').onclick = () => location.reload();
     
@@ -968,18 +977,16 @@
         };
     });
     
-    // ============================================
-    // QUESTIONS
-    // ============================================
+    // Questions
     async function loadQuestions() {
         try {
             const response = await fetch('questions.json');
             if (!response.ok) throw new Error('questions.json not found');
             const data = await response.json();
             questionBank = data.questions || data;
-            console.log('✅ Loaded from questions.json');
+            console.log('Loaded from questions.json');
         } catch (error) {
-            console.log('⚠️ Using embedded questions');
+            console.log('Using embedded questions');
             questionBank = DEFAULT_QUESTIONS;
         }
     }
@@ -1022,7 +1029,7 @@
                     } else {
                         const msg = document.createElement('div');
                         msg.style.cssText = 'color:#ff8888;text-align:center;margin-top:15px';
-                        msg.innerText = "❌ WRONG - TRY AGAIN";
+                        msg.innerText = "WRONG - TRY AGAIN";
                         overlay.querySelector('.quiz-container').appendChild(msg);
                         setTimeout(() => msg.remove(), 1200);
                     }
@@ -1034,19 +1041,17 @@
         showQuestion();
     }
     
-    // ============================================
-    // INIT
-    // ============================================
+    // Init
     document.querySelectorAll('.diff-btn').forEach(btn => {
         if (parseInt(btn.dataset.diff) === currentDifficulty) btn.classList.add('active');
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.6';
     });
     
-    document.getElementById('gameStatusMsg').innerHTML = '📚 Loading questions...';
+    document.getElementById('gameStatusMsg').innerHTML = 'Loading questions...';
     
     loadQuestions().then(() => {
-        document.getElementById('gameStatusMsg').innerHTML = '✨ Answer 3 questions to start';
+        document.getElementById('gameStatusMsg').innerHTML = 'Answer 3 questions to start';
         startQuiz();
     });
 </script>
