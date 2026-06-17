@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Long Sliders · No Emojis</title>
+    <title>osu! · Double Tap Notes · No Sliders</title>
     <style>
         * {
             user-select: none;
@@ -371,7 +371,7 @@
         <div id="gameStatusMsg" class="result-message">Loading questions...</div>
     </div>
     <div class="footer-meta">
-        TAP circles • SLIDERS: start from either end • ACCURACY below 60% = GAME OVER
+        TAP single circles • DOUBLE TAP note pairs • ACCURACY below 60% = GAME OVER
     </div>
 </div>
 
@@ -383,23 +383,21 @@
     ];
 
     const difficulties = [
-        { name: "EASY",   circleCount: 20, sliderCount: 3, approachTime: 1300, radius: 40, timingWindow: 1.3 },
-        { name: "NORMAL", circleCount: 30, sliderCount: 5, approachTime: 1000, radius: 35, timingWindow: 1.0 },
-        { name: "HARD",   circleCount: 45, sliderCount: 8, approachTime: 700, radius: 30, timingWindow: 0.8 },
-        { name: "INSANE", circleCount: 60, sliderCount: 12, approachTime: 500, radius: 27, timingWindow: 0.65 }
+        { name: "EASY",   circleCount: 20, doubleCount: 5, approachTime: 1300, radius: 40, timingWindow: 1.3 },
+        { name: "NORMAL", circleCount: 30, doubleCount: 8, approachTime: 1000, radius: 35, timingWindow: 1.0 },
+        { name: "HARD",   circleCount: 40, doubleCount: 12, approachTime: 700, radius: 30, timingWindow: 0.8 },
+        { name: "INSANE", circleCount: 50, doubleCount: 18, approachTime: 500, radius: 27, timingWindow: 0.65 }
     ];
     
     const TIMING = { perfect: 45, good: 90, ok: 160 };
     const BASE_SCORE = 250;
-    const SLIDER_SCORE = 150;
+    const DOUBLE_SCORE = 400;
     const GAME_DURATION = 30000;
-    const SLIDER_DURATION_EXTRA = 600;
     
     let canvas, ctx;
     let activeCircles = [];
-    let activeSliders = [];
-    let draggingSlider = null;
-    let dragDirection = 1;
+    let activeDoubles = [];
+    let doubleTapProgress = {}; // Track double tap progress per note
     let score = 0, combo = 0, maxCombo = 0, totalHits = 0, misses = 0;
     let gameActive = false, gameStarted = false;
     let currentDifficulty = 1;
@@ -466,35 +464,13 @@
         updateAccuracy();
     }
     
-    // Generate LONG slider path with big curves
-    function generateLongSliderPath(startX, startY, endX, endY) {
-        const points = [];
-        const steps = 40;
-        
-        const dist = Math.hypot(endX - startX, endY - startY);
-        const curveAmount = Math.min(100, dist * 0.5);
-        
-        const cp1x = startX + (endX - startX) * 0.2 + (Math.random() - 0.5) * curveAmount;
-        const cp1y = startY + (endY - startY) * 0.1 + (Math.random() - 0.5) * curveAmount * 0.7;
-        const cp2x = startX + (endX - startX) * 0.8 + (Math.random() - 0.5) * curveAmount;
-        const cp2y = startY + (endY - startY) * 0.9 + (Math.random() - 0.5) * curveAmount * 0.7;
-        
-        for (let i = 0; i <= steps; i++) {
-            const t = i / steps;
-            const x = Math.pow(1-t,3)*startX + 3*Math.pow(1-t,2)*t*cp1x + 3*(1-t)*Math.pow(t,2)*cp2x + Math.pow(t,3)*endX;
-            const y = Math.pow(1-t,3)*startY + 3*Math.pow(1-t,2)*t*cp1y + 3*(1-t)*Math.pow(t,2)*cp2y + Math.pow(t,3)*endY;
-            points.push({x, y});
-        }
-        return points;
-    }
-    
     function generateNotes() {
         const diff = difficulties[currentDifficulty];
         const startOffset = 1500;
         const endTime = GAME_DURATION;
         const notes = [];
         
-        // Circles
+        // Single circles
         for (let i = 0; i < diff.circleCount; i++) {
             let t = startOffset + (i / diff.circleCount) * (endTime - startOffset - 500);
             t += (Math.random() - 0.5) * 40;
@@ -514,48 +490,39 @@
             });
         }
         
-        // Sliders - MUCH FARTHER DISTANCE
-        for (let i = 0; i < diff.sliderCount; i++) {
-            let t = startOffset + 800 + (i / diff.sliderCount) * (endTime - startOffset - 1000);
+        // Double tap notes - two circles close together
+        for (let i = 0; i < diff.doubleCount; i++) {
+            let t = startOffset + 800 + (i / diff.doubleCount) * (endTime - startOffset - 1000);
             t += (Math.random() - 0.5) * 50;
             
-            const margin = 60;
-            const startX = margin + Math.random() * (canvasElem.width - margin * 2);
-            const startY = margin + Math.random() * (canvasElem.height - margin * 2);
+            const margin = 70;
+            const centerX = margin + Math.random() * (canvasElem.width - margin * 2);
+            const centerY = margin + Math.random() * (canvasElem.height - margin * 2);
             
-            // Force long distance: min 250px, max 450px
-            let endX, endY;
-            let distance = 0;
-            let attempts = 0;
-            do {
-                const angle = Math.random() * Math.PI * 2;
-                const minDist = 250;
-                const maxDist = 420;
-                const dist = minDist + Math.random() * (maxDist - minDist);
-                
-                endX = startX + Math.cos(angle) * dist;
-                endY = startY + Math.sin(angle) * dist;
-                
-                endX = Math.min(canvasElem.width - margin, Math.max(margin, endX));
-                endY = Math.min(canvasElem.height - margin, Math.max(margin, endY));
-                
-                distance = Math.hypot(endX - startX, endY - startY);
-                attempts++;
-            } while (distance < 200 && attempts < 15);
+            // Two circles offset from each other
+            const offset = diff.radius * 1.5;
+            const angle = Math.random() * Math.PI * 2;
             
-            const points = generateLongSliderPath(startX, startY, endX, endY);
+            const x1 = centerX + Math.cos(angle) * offset;
+            const y1 = centerY + Math.sin(angle) * offset;
+            const x2 = centerX + Math.cos(angle + Math.PI) * offset;
+            const y2 = centerY + Math.sin(angle + Math.PI) * offset;
+            
+            // Make sure both are in bounds
+            const margin2 = 80;
+            const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
             
             notes.push({
-                type: 'slider',
+                type: 'double',
                 time: t,
-                startX: startX, startY: startY,
-                endX: endX, endY: endY,
-                points: points,
-                radius: diff.radius - 4,
-                approachTime: diff.approachTime + SLIDER_DURATION_EXTRA,
+                x1: clamp(x1, margin2, canvasElem.width - margin2),
+                y1: clamp(y1, margin2, canvasElem.height - margin2),
+                x2: clamp(x2, margin2, canvasElem.width - margin2),
+                y2: clamp(y2, margin2, canvasElem.height - margin2),
+                radius: diff.radius - 2,
+                approachTime: diff.approachTime,
                 hit: false,
-                completed: false,
-                dragProgress: 0,
+                tapped: 0, // 0 = none, 1 = first tapped, 2 = both tapped
                 id: Math.random()
             });
         }
@@ -586,8 +553,8 @@
                 allNotes = generateNotes();
                 nextNoteIndex = 0;
                 activeCircles = [];
-                activeSliders = [];
-                draggingSlider = null;
+                activeDoubles = [];
+                doubleTapProgress = {};
                 score = 0; combo = 0; maxCombo = 0; totalHits = 0; misses = 0;
                 gameStartTime = performance.now();
                 updateUI();
@@ -602,12 +569,18 @@
                     if (gameActive && !quizActive && !deathTriggered) {
                         while (nextNoteIndex < allNotes.length && elapsed >= allNotes[nextNoteIndex].time - allNotes[nextNoteIndex].approachTime) {
                             const note = allNotes[nextNoteIndex];
-                            if (note.type === 'circle') activeCircles.push({...note});
-                            else activeSliders.push({...note});
+                            if (note.type === 'circle') {
+                                activeCircles.push({...note});
+                            } else if (note.type === 'double') {
+                                activeDoubles.push({...note});
+                                doubleTapProgress[note.id] = 0;
+                            }
                             nextNoteIndex++;
                         }
                         
                         const timingOk = TIMING.ok * difficulties[currentDifficulty].timingWindow;
+                        
+                        // Check single circle misses
                         for (let i = 0; i < activeCircles.length; i++) {
                             const note = activeCircles[i];
                             if (!note.hit && elapsed > note.time + timingOk + 50) {
@@ -619,16 +592,20 @@
                         }
                         activeCircles = activeCircles.filter(n => !n.hit);
                         
-                        for (let i = 0; i < activeSliders.length; i++) {
-                            const slider = activeSliders[i];
-                            if (!slider.hit && !slider.completed && elapsed > slider.time + timingOk + 150) {
-                                slider.hit = true;
+                        // Check double tap misses
+                        for (let i = 0; i < activeDoubles.length; i++) {
+                            const note = activeDoubles[i];
+                            if (!note.hit && elapsed > note.time + timingOk + 50) {
+                                note.hit = true;
                                 combo = 0;
                                 misses++;
                                 updateUI();
+                                // Show miss on both circles
+                                showMessage("MISS", note.x1, note.y1, "#ff6666");
+                                showMessage("MISS", note.x2, note.y2, "#ff6666");
                             }
                         }
-                        activeSliders = activeSliders.filter(s => !s.hit && !s.completed);
+                        activeDoubles = activeDoubles.filter(n => !n.hit);
                     }
                     
                     draw();
@@ -649,75 +626,79 @@
         const now = performance.now();
         const elapsed = now - gameStartTime;
         
-        for (const s of activeSliders) {
-            const timeToHit = s.time - elapsed;
-            const alpha = Math.min(1, Math.max(0.3, 1 - (s.approachTime - timeToHit) / s.approachTime * 0.5));
+        // Draw double tap notes
+        for (const d of activeDoubles) {
+            const timeToHit = d.time - elapsed;
+            const alpha = Math.min(1, Math.max(0.3, 1 - (d.approachTime - timeToHit) / d.approachTime * 0.5));
             
-            // Slider path
+            // Draw connecting line
             ctx.beginPath();
-            ctx.moveTo(s.points[0].x, s.points[0].y);
-            for (let i = 1; i < s.points.length; i++) {
-                ctx.lineTo(s.points[i].x, s.points[i].y);
-            }
-            ctx.strokeStyle = `rgba(200, 120, 180, ${alpha})`;
-            ctx.lineWidth = 6;
+            ctx.moveTo(d.x1, d.y1);
+            ctx.lineTo(d.x2, d.y2);
+            ctx.strokeStyle = `rgba(200, 120, 180, ${alpha * 0.5})`;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([6, 6]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw both circles
+            const progress = Math.min(1, Math.max(0, 1 - timeToHit / d.approachTime));
+            const scale = 1.8 - progress * 0.8;
+            
+            // Circle 1
+            const radius1 = d.radius * scale;
+            const isTapped1 = d.tapped >= 1;
+            
+            ctx.beginPath();
+            ctx.arc(d.x1, d.y1, radius1, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255, 180, 220, ${isTapped1 ? 0.3 : alpha})`;
+            ctx.lineWidth = 3;
             ctx.stroke();
             
-            // Start circle (PINK)
             ctx.beginPath();
-            ctx.arc(s.startX, s.startY, s.radius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(200, 100, 160, ${alpha})`;
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(s.startX, s.startY, s.radius - 4, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 200, 220, ${alpha})`;
+            ctx.arc(d.x1, d.y1, d.radius - 2, 0, Math.PI * 2);
+            ctx.fillStyle = isTapped1 ? `rgba(100, 200, 100, ${alpha})` : `rgba(255, 100, 160, ${alpha})`;
             ctx.fill();
             
-            // End circle (CYAN)
-            ctx.beginPath();
-            ctx.arc(s.endX, s.endY, s.radius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(100, 150, 200, ${alpha})`;
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(s.endX, s.endY, s.radius - 4, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(180, 220, 255, ${alpha})`;
-            ctx.fill();
-            
-            // Progress highlight
-            if (draggingSlider && draggingSlider.id === s.id && s.dragProgress > 0.01) {
-                let progressIndex;
-                if (dragDirection === 1) {
-                    progressIndex = Math.floor(s.dragProgress * (s.points.length - 1));
-                } else {
-                    progressIndex = Math.floor((1 - s.dragProgress) * (s.points.length - 1));
-                }
-                
-                for (let i = 0; i <= progressIndex && i < s.points.length; i++) {
-                    ctx.beginPath();
-                    ctx.arc(s.points[i].x, s.points[i].y, s.radius - 1, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 220, 80, 0.7)`;
-                    ctx.fill();
-                }
+            if (isTapped1) {
+                ctx.beginPath();
+                ctx.arc(d.x1, d.y1, d.radius - 6, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(150, 255, 150, ${alpha})`;
+                ctx.fill();
             }
             
-            // Current position orb
-            if (draggingSlider && draggingSlider.id === s.id) {
-                let progressIndex;
-                if (dragDirection === 1) {
-                    progressIndex = Math.floor(s.dragProgress * (s.points.length - 1));
-                } else {
-                    progressIndex = Math.floor((1 - s.dragProgress) * (s.points.length - 1));
-                }
-                
-                if (progressIndex < s.points.length) {
-                    ctx.beginPath();
-                    ctx.arc(s.points[progressIndex].x, s.points[progressIndex].y, s.radius + 4, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 255, 200, 0.9)`;
-                    ctx.fill();
-                }
+            // Circle 2
+            const radius2 = d.radius * scale;
+            const isTapped2 = d.tapped >= 2;
+            
+            ctx.beginPath();
+            ctx.arc(d.x2, d.y2, radius2, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255, 180, 220, ${isTapped2 ? 0.3 : alpha})`;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(d.x2, d.y2, d.radius - 2, 0, Math.PI * 2);
+            ctx.fillStyle = isTapped2 ? `rgba(100, 200, 100, ${alpha})` : `rgba(100, 150, 200, ${alpha})`;
+            ctx.fill();
+            
+            if (isTapped2) {
+                ctx.beginPath();
+                ctx.arc(d.x2, d.y2, d.radius - 6, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(150, 255, 150, ${alpha})`;
+                ctx.fill();
             }
+            
+            // Number indicators
+            ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+            ctx.font = `bold ${d.radius - 4}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            if (!isTapped1) ctx.fillText("1", d.x1, d.y1 + 1);
+            if (!isTapped2) ctx.fillText("2", d.x2, d.y2 + 1);
         }
         
+        // Draw single circles
         for (const c of activeCircles) {
             const timeToHit = c.time - elapsed;
             let scale = 1.0;
@@ -745,6 +726,7 @@
             ctx.fill();
         }
         
+        // Combo
         if (combo >= 5 && gameStarted && gameActive && !deathTriggered) {
             ctx.font = `bold 32px "Courier New"`;
             ctx.fillStyle = "#ffcc66";
@@ -755,6 +737,7 @@
             ctx.shadowBlur = 0;
         }
         
+        // Progress bar
         const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION));
         ctx.fillStyle = "#ff66aa30";
         ctx.fillRect(20, canvasElem.height - 20, canvasElem.width - 40, 6);
@@ -778,7 +761,7 @@
         const {x, y} = getCanvasCoords(clientX, clientY);
         const elapsed = performance.now() - gameStartTime;
         
-        // Check circles
+        // Check single circles first
         for (let i = 0; i < activeCircles.length; i++) {
             const c = activeCircles[i];
             const dx = c.x - x;
@@ -817,101 +800,66 @@
             }
         }
         
-        // Slider start - BOTH ENDS
-        for (let i = 0; i < activeSliders.length; i++) {
-            const s = activeSliders[i];
-            if (draggingSlider) break;
+        // Check double tap notes
+        for (let i = 0; i < activeDoubles.length; i++) {
+            const d = activeDoubles[i];
+            if (d.hit) continue;
             
-            const distStart = Math.hypot(s.startX - x, s.startY - y);
-            const distEnd = Math.hypot(s.endX - x, s.endY - y);
+            const timeDiff = Math.abs(elapsed - d.time);
+            const scale = difficulties[currentDifficulty].timingWindow;
+            if (timeDiff > TIMING.ok * scale) continue;
             
-            const tappedStart = distStart <= s.radius * 1.8;
-            const tappedEnd = distEnd <= s.radius * 1.8;
+            // Check if tapping circle 1
+            const dx1 = d.x1 - x;
+            const dy1 = d.y1 - y;
+            const dist1 = Math.hypot(dx1, dy1);
             
-            if ((tappedStart || tappedEnd) && !draggingSlider) {
-                const timeDiff = Math.abs(elapsed - s.time);
-                const scale = difficulties[currentDifficulty].timingWindow;
-                if (timeDiff <= TIMING.ok * scale) {
-                    draggingSlider = s;
-                    s.dragProgress = 0;
-                    s.hit = true;
-                    
-                    if (tappedStart) {
-                        dragDirection = 1;
-                        showMessage("SLIDER", clientX, clientY, "#ff88ff");
-                    } else {
-                        dragDirection = -1;
-                        showMessage("SLIDER REVERSE", clientX, clientY, "#88aaff");
-                    }
-                    return;
-                }
+            // Check if tapping circle 2
+            const dx2 = d.x2 - x;
+            const dy2 = d.y2 - y;
+            const dist2 = Math.hypot(dx2, dy2);
+            
+            const tappedCircle1 = dist1 <= d.radius * 1.5;
+            const tappedCircle2 = dist2 <= d.radius * 1.5;
+            
+            if (tappedCircle1 && d.tapped === 0) {
+                // First tap
+                d.tapped = 1;
+                showMessage("1", clientX, clientY, "#88ff88");
+                return;
+            } else if (tappedCircle1 && d.tapped === 1) {
+                // Already tapped first, ignore
+                return;
+            } else if (tappedCircle2 && d.tapped === 0) {
+                // Can tap second first, but mark as tapped 1
+                d.tapped = 1;
+                showMessage("1", clientX, clientY, "#88ff88");
+                return;
+            } else if (tappedCircle2 && d.tapped === 1) {
+                // Second tap - COMPLETE!
+                d.tapped = 2;
+                d.hit = true;
+                
+                const pointsEarned = DOUBLE_SCORE + Math.floor(combo * 4);
+                score += pointsEarned;
+                combo += 2;
+                if (combo > maxCombo) maxCombo = combo;
+                totalHits += 2;
+                updateUI();
+                showMessage("DOUBLE!", clientX, clientY, "#ff88ff");
+                
+                // Remove from active
+                const index = activeDoubles.findIndex(dn => dn.id === d.id);
+                if (index !== -1) activeDoubles.splice(index, 1);
+                return;
             }
         }
         
+        // Miss
         combo = 0;
         misses++;
         updateUI();
         showMessage("MISS", clientX, clientY, "#ff6666");
-    }
-    
-    function handleDrag(clientX, clientY) {
-        if (!gameActive || !gameStarted || deathTriggered) return;
-        if (!draggingSlider) return;
-        
-        const {x, y} = getCanvasCoords(clientX, clientY);
-        const s = draggingSlider;
-        const points = s.points;
-        
-        let bestProgress = s.dragProgress;
-        let found = false;
-        
-        for (let i = 0; i < points.length; i++) {
-            const dx = points[i].x - x;
-            const dy = points[i].y - y;
-            if (Math.hypot(dx, dy) <= s.radius * 2.0) {
-                found = true;
-                let newProgress = i / (points.length - 1);
-                if (dragDirection === -1) {
-                    newProgress = 1 - newProgress;
-                }
-                if (newProgress > bestProgress) {
-                    bestProgress = newProgress;
-                }
-            }
-        }
-        
-        if (found && bestProgress > s.dragProgress) {
-            s.dragProgress = Math.min(bestProgress, 1.0);
-            
-            if (s.dragProgress >= 0.98) {
-                const pointsEarned = SLIDER_SCORE + Math.floor(combo * 2);
-                score += pointsEarned;
-                combo++;
-                if (combo > maxCombo) maxCombo = combo;
-                totalHits++;
-                updateUI();
-                showMessage("SLIDER END", clientX, clientY, "#88ff88");
-                
-                const index = activeSliders.findIndex(sl => sl.id === s.id);
-                if (index !== -1) activeSliders.splice(index, 1);
-                draggingSlider = null;
-            }
-        }
-    }
-    
-    function handleDragEnd() {
-        if (draggingSlider) {
-            const s = draggingSlider;
-            if (s.dragProgress < 0.85) {
-                combo = 0;
-                misses++;
-                updateUI();
-                showMessage("SLIDER FAIL", s.startX, s.startY, "#ff6666");
-                const index = activeSliders.findIndex(sl => sl.id === s.id);
-                if (index !== -1) activeSliders.splice(index, 1);
-            }
-            draggingSlider = null;
-        }
     }
     
     // Touch events
@@ -923,40 +871,20 @@
     
     canvasElem.addEventListener('touchmove', (e) => {
         e.preventDefault();
-        const touch = e.touches[0];
-        if (touch) handleDrag(touch.clientX, touch.clientY);
     }, { passive: false });
     
     canvasElem.addEventListener('touchend', (e) => {
         e.preventDefault();
-        handleDragEnd();
     }, { passive: false });
     
     canvasElem.addEventListener('touchcancel', (e) => {
         e.preventDefault();
-        handleDragEnd();
     }, { passive: false });
     
     // Mouse events
-    let isMouseDown = false;
     canvasElem.addEventListener('mousedown', (e) => {
         e.preventDefault();
-        isMouseDown = true;
         handleTap(e.clientX, e.clientY);
-    });
-    
-    window.addEventListener('mousemove', (e) => {
-        if (isMouseDown) {
-            e.preventDefault();
-            handleDrag(e.clientX, e.clientY);
-        }
-    });
-    
-    window.addEventListener('mouseup', (e) => {
-        if (isMouseDown) {
-            isMouseDown = false;
-            handleDragEnd();
-        }
     });
     
     // UI Buttons
