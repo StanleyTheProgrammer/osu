@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Tin Shing Court Questions · Sliders Both Ends</title>
+    <title>osu! · Working Sliders · Both Ends</title>
     <style>
         * {
             user-select: none;
@@ -362,14 +362,12 @@
         <div id="gameStatusMsg" class="result-message">Loading questions...</div>
     </div>
     <div class="footer-meta">
-        TAP circles • SLIDERS: start from EITHER end • ACCURACY &lt;60% = GAME OVER
+        TAP circles • SLIDERS: HOLD on ANY end and drag along the path • ACCURACY &lt;60% = GAME OVER
     </div>
 </div>
 
 <script>
-    // ============================================
-    // EMBEDDED QUESTIONS (Tin Shing Court - English)
-    // ============================================
+    // Embedded Questions (Tin Shing Court - English)
     const DEFAULT_QUESTIONS = [
         {
             "question": "How many rooms does Tin Shing Court have?",
@@ -404,7 +402,7 @@
     let canvas, ctx;
     let activeCircles = [];
     let activeSliders = [];
-    let draggingSliderId = null;
+    let draggingSlider = null;
     let dragDirection = 1;
     let score = 0, combo = 0, maxCombo = 0, totalHits = 0, misses = 0;
     let gameActive = false, gameStarted = false;
@@ -474,12 +472,12 @@
     
     function generateSliderPath(startX, startY, endX, endY) {
         const points = [];
-        const steps = 40;
+        const steps = 50;
         
-        const cp1x = startX + (endX - startX) * 0.25;
-        const cp1y = startY + (endY - startY) * 0.2;
-        const cp2x = startX + (endX - startX) * 0.75;
-        const cp2y = startY + (endY - startY) * 0.8;
+        const cp1x = startX + (endX - startX) * 0.25 + (Math.random() - 0.5) * 40;
+        const cp1y = startY + (endY - startY) * 0.2 + (Math.random() - 0.5) * 40;
+        const cp2x = startX + (endX - startX) * 0.75 + (Math.random() - 0.5) * 40;
+        const cp2y = startY + (endY - startY) * 0.8 + (Math.random() - 0.5) * 40;
         
         for (let i = 0; i <= steps; i++) {
             const t = i / steps;
@@ -572,7 +570,7 @@
                 nextNoteIndex = 0;
                 activeCircles = [];
                 activeSliders = [];
-                draggingSliderId = null;
+                draggingSlider = null;
                 score = 0; combo = 0; maxCombo = 0; totalHits = 0; misses = 0;
                 gameStartTime = performance.now();
                 updateUI();
@@ -640,6 +638,7 @@
             const timeToHit = s.time - elapsed;
             const alpha = Math.min(1, Math.max(0.4, 1 - (s.approachTime - timeToHit) / s.approachTime * 0.5));
             
+            // Slider body
             ctx.beginPath();
             ctx.moveTo(s.points[0].x, s.points[0].y);
             for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
@@ -647,6 +646,7 @@
             ctx.lineWidth = 6;
             ctx.stroke();
             
+            // Slider border
             ctx.beginPath();
             ctx.moveTo(s.points[0].x, s.points[0].y);
             for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
@@ -674,7 +674,8 @@
             ctx.fillStyle = `rgba(180, 220, 255, ${alpha})`;
             ctx.fill();
             
-            if (draggingSliderId === s.id && s.dragProgress > 0) {
+            // Progress highlight for dragged slider
+            if (draggingSlider && draggingSlider.id === s.id && s.dragProgress > 0) {
                 let progressIndex;
                 if (dragDirection === 1) {
                     progressIndex = Math.floor(s.dragProgress * (s.points.length - 1));
@@ -685,7 +686,7 @@
                 for (let i = 0; i <= progressIndex; i++) {
                     ctx.beginPath();
                     ctx.arc(s.points[i].x, s.points[i].y, s.radius - 1, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 220, 120, 0.6)`;
+                    ctx.fillStyle = `rgba(255, 220, 120, 0.7)`;
                     ctx.fill();
                 }
             }
@@ -744,6 +745,7 @@
         const canvasY = (clientY - rect.top) * scaleY;
         const elapsed = performance.now() - gameStartTime;
         
+        // Hit circles
         for (let i = 0; i < activeCircles.length; i++) {
             const c = activeCircles[i];
             const dx = c.x - canvasX;
@@ -782,6 +784,7 @@
             }
         }
         
+        // Start dragging slider - check BOTH ends
         for (let i = 0; i < activeSliders.length; i++) {
             const s = activeSliders[i];
             
@@ -793,14 +796,14 @@
             const dyEnd = s.endY - canvasY;
             const distToEnd = Math.hypot(dxEnd, dyEnd);
             
-            const tappedStart = distToStart <= s.radius * 1.5;
-            const tappedEnd = distToEnd <= s.radius * 1.5;
+            const tappedStart = distToStart <= s.radius * 1.8;
+            const tappedEnd = distToEnd <= s.radius * 1.8;
             
-            if ((tappedStart || tappedEnd) && draggingSliderId === null) {
+            if ((tappedStart || tappedEnd) && !draggingSlider) {
                 const timeDiff = Math.abs(elapsed - s.time);
                 const scale = difficulties[currentDifficulty].timingWindow;
                 if (timeDiff <= TIMING.ok * scale) {
-                    draggingSliderId = s.id;
+                    draggingSlider = s;
                     s.dragProgress = 0;
                     s.hit = true;
                     
@@ -816,6 +819,7 @@
             }
         }
         
+        // Miss
         combo = 0;
         misses++;
         updateUI();
@@ -824,14 +828,9 @@
     
     function handleDrag(clientX, clientY) {
         if (!gameActive || !gameStarted || deathTriggered) return;
-        if (draggingSliderId === null) return;
+        if (!draggingSlider) return;
         
-        const s = activeSliders.find(sl => sl.id === draggingSliderId);
-        if (!s) {
-            draggingSliderId = null;
-            return;
-        }
-        
+        const s = draggingSlider;
         const rect = canvasElem.getBoundingClientRect();
         const scaleX = canvasElem.width / rect.width;
         const scaleY = canvasElem.height / rect.height;
@@ -840,14 +839,19 @@
         
         const points = s.points;
         let bestProgress = s.dragProgress;
+        let foundPoint = false;
         
+        // Find the farthest point on the path that's near the cursor
         for (let i = 0; i < points.length; i++) {
             const dx = points[i].x - canvasX;
             const dy = points[i].y - canvasY;
             const distToPoint = Math.hypot(dx, dy);
-            if (distToPoint <= s.radius * 1.8) {
+            
+            if (distToPoint <= s.radius * 2.0) {
+                foundPoint = true;
                 let newProgress = i / (points.length - 1);
                 
+                // If dragging reverse, invert progress
                 if (dragDirection === -1) {
                     newProgress = 1 - newProgress;
                 }
@@ -858,9 +862,11 @@
             }
         }
         
-        if (bestProgress > s.dragProgress) {
+        // If cursor is near the path, update progress
+        if (foundPoint && bestProgress > s.dragProgress) {
             s.dragProgress = bestProgress;
             
+            // Check if slider is complete (progress >= 0.98)
             if (s.dragProgress >= 0.98) {
                 const pointsEarned = SLIDER_SCORE + Math.floor(combo * 2);
                 score += pointsEarned;
@@ -870,25 +876,26 @@
                 updateUI();
                 showMessage("SLIDER END", clientX, clientY, "#88ff88");
                 
+                // Remove from active sliders
                 const index = activeSliders.findIndex(sl => sl.id === s.id);
                 if (index !== -1) activeSliders.splice(index, 1);
-                draggingSliderId = null;
+                draggingSlider = null;
             }
         }
     }
     
     function handleDragEnd() {
-        if (draggingSliderId !== null) {
-            const s = activeSliders.find(sl => sl.id === draggingSliderId);
-            if (s && s.dragProgress < 0.95) {
+        if (draggingSlider) {
+            const s = draggingSlider;
+            if (s.dragProgress < 0.90) {
                 combo = 0;
                 misses++;
                 updateUI();
                 showMessage("SLIDER FAIL", s.startX, s.startY, "#ff6666");
-                const index = activeSliders.findIndex(sl => sl.id === draggingSliderId);
+                const index = activeSliders.findIndex(sl => sl.id === s.id);
                 if (index !== -1) activeSliders.splice(index, 1);
             }
-            draggingSliderId = null;
+            draggingSlider = null;
         }
     }
     
@@ -917,9 +924,6 @@
         };
     });
     
-    // ============================================
-    // LOAD QUESTIONS - FALLBACK TO DEFAULT
-    // ============================================
     async function loadQuestions() {
         try {
             const response = await fetch('questions.json');
@@ -983,7 +987,6 @@
         showQuestion();
     }
     
-    // Initialize
     document.querySelectorAll('.diff-btn').forEach(btn => {
         if (parseInt(btn.dataset.diff) === currentDifficulty) btn.classList.add('active');
         btn.style.pointerEvents = 'none';
