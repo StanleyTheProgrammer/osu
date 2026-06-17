@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Beatmap Builder + Export/Import .osubm</title>
+    <title>osu! · Beatmap Builder · Difficulty</title>
     <style>
         * {
             user-select: none;
@@ -40,6 +40,7 @@
             padding: 15px;
             box-shadow: 0 25px 40px rgba(0,0,0,0.5);
             border: 1px solid rgba(255,255,255,0.15);
+            position: relative;
         }
 
         canvas {
@@ -61,6 +62,7 @@
             background: rgba(0,0,0,0.6);
             border-radius: 16px;
             align-items: center;
+            margin-top: 10px;
         }
 
         .controls button {
@@ -101,6 +103,19 @@
             color: #1a1a2e;
         }
 
+        .controls button.diff-btn {
+            background: #1e2438;
+            color: #cbd5ff;
+            font-size: 0.65rem;
+            padding: 3px 8px;
+        }
+
+        .controls button.diff-btn.active {
+            background: #ff66aa;
+            color: white;
+            box-shadow: 0 0 12px #ff66aa80;
+        }
+
         .controls input, .controls select {
             background: #1e2438;
             border: 1px solid #4a4a6a;
@@ -132,6 +147,7 @@
             background: rgba(0,0,0,0.4);
             border-radius: 12px;
             flex-wrap: wrap;
+            margin-top: 8px;
         }
 
         .status-bar span {
@@ -343,6 +359,108 @@
             display: none;
         }
 
+        .mode-indicator {
+            color: #ff88cc;
+            font-weight: bold;
+            font-size: 0.7rem;
+        }
+
+        /* Quiz Overlay */
+        .quiz-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .quiz-container {
+            background: linear-gradient(135deg, #1e1b2e, #141121);
+            border-radius: 48px;
+            padding: 30px 25px;
+            max-width: 500px;
+            width: 90%;
+            border: 2px solid #ff88cc;
+            box-shadow: 0 0 40px rgba(255, 136, 204, 0.3);
+            position: relative;
+        }
+
+        .quiz-question {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #ffd966;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quiz-opt {
+            background: #2a2342;
+            border: 2px solid #5a4a8a;
+            padding: 14px 20px;
+            border-radius: 60px;
+            color: #f0e6ff;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            font-size: 1rem;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .quiz-opt:active {
+            background: #ff66aa;
+            transform: scale(0.97);
+        }
+
+        .progress-badge {
+            text-align: center;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            color: #ffaa88;
+            font-weight: bold;
+        }
+
+        /* Build button on bottom corner of quiz */
+        .build-quiz-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #ff66aa;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            z-index: 1001;
+            box-shadow: 0 0 30px rgba(255, 102, 170, 0.5);
+            transition: 0.3s;
+            -webkit-tap-highlight-color: transparent;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .build-quiz-btn:active {
+            transform: scale(0.95);
+        }
+
+        .build-quiz-btn.hidden {
+            display: none;
+        }
+
         @media (max-width: 768px) {
             body { padding: 5px; }
             .floating-judgement { font-size: 1.2rem; }
@@ -351,6 +469,9 @@
             .controls button { font-size: 0.6rem; padding: 3px 8px; }
             .controls input { font-size: 0.6rem; padding: 2px 6px; min-width: 50px; }
             .beatmap-list { padding: 20px; }
+            .build-quiz-btn { bottom: 15px; right: 15px; padding: 10px 18px; font-size: 0.8rem; }
+            .quiz-container { padding: 20px 15px; }
+            .quiz-question { font-size: 1.1rem; }
         }
     </style>
 </head>
@@ -372,6 +493,15 @@
             <button id="importBtn" class="warning">IMPORT</button>
             <button class="danger" id="clearBtn">CLEAR</button>
             
+            <span style="color:#666;font-size:0.6rem;">|</span>
+            
+            <button class="diff-btn" data-diff="0">EASY</button>
+            <button class="diff-btn active" data-diff="1">NORMAL</button>
+            <button class="diff-btn" data-diff="2">HARD</button>
+            <button class="diff-btn" data-diff="3">INSANE</button>
+            
+            <span style="color:#666;font-size:0.6rem;">|</span>
+            
             <label>BPM</label>
             <input type="number" id="bpmInput" value="120" min="60" max="300" style="width:45px">
             
@@ -386,6 +516,7 @@
             <span id="noteCount">NOTES: 0</span>
             <span id="beatmapStatus">STATUS: IDLE</span>
             <span id="musicStatus">NO MUSIC</span>
+            <span id="modeIndicator" class="mode-indicator">MODE: DIFFICULTY</span>
         </div>
     </div>
 </div>
@@ -400,9 +531,12 @@
     <button class="close-list" id="closeListBtn">CLOSE</button>
 </div>
 
+<!-- Build button on bottom corner of quiz -->
+<button class="build-quiz-btn hidden" id="buildQuizBtn">🎵 BUILD BEATMAPS</button>
+
 <script>
     // ============================================
-    // BEATMAP BUILDER + PLAYER + EXPORT/IMPORT
+    // BEATMAP BUILDER + DIFFICULTY + QUIZ
     // ============================================
     
     const DEFAULT_QUESTIONS = [
@@ -412,10 +546,10 @@
     ];
 
     const difficulties = [
-        { name: "EASY",   timingWindow: 1.3, radius: 38 },
-        { name: "NORMAL", timingWindow: 1.0, radius: 34 },
-        { name: "HARD",   timingWindow: 0.8, radius: 30 },
-        { name: "INSANE", timingWindow: 0.65, radius: 27 }
+        { name: "EASY",   circleCount: 20, doubleCount: 5, approachTime: 1300, radius: 40, timingWindow: 1.3 },
+        { name: "NORMAL", circleCount: 30, doubleCount: 8, approachTime: 1000, radius: 35, timingWindow: 1.0 },
+        { name: "HARD",   circleCount: 40, doubleCount: 12, approachTime: 700, radius: 30, timingWindow: 0.8 },
+        { name: "INSANE", circleCount: 50, doubleCount: 18, approachTime: 500, radius: 27, timingWindow: 0.65 }
     ];
     
     const TIMING = { perfect: 45, good: 90, ok: 160 };
@@ -445,10 +579,12 @@
     let audioSource = null;
     let musicFile = null;
     let musicName = 'No Music';
+    let isCustomBeatmap = false;
     
     let quizActive = true, gameLocked = true;
     let questionBank = [];
     let deathTriggered = false;
+    let quizCompleted = false;
     
     const canvasElem = document.getElementById('gameCanvas');
     canvasElem.width = 800;
@@ -513,7 +649,73 @@
     }
     
     // ============================================
-    // BEATMAP STORAGE (localStorage)
+    // DIFFICULTY GENERATOR
+    // ============================================
+    function generateDifficultyNotes() {
+        const diff = difficulties[currentDifficulty];
+        const notes = [];
+        const startOffset = 1500;
+        const endTime = GAME_DURATION;
+        
+        for (let i = 0; i < diff.circleCount; i++) {
+            let t = startOffset + (i / diff.circleCount) * (endTime - startOffset - 500);
+            t += (Math.random() - 0.5) * 40;
+            
+            const margin = 70;
+            const x = margin + Math.random() * (canvasElem.width - margin * 2);
+            const y = margin + Math.random() * (canvasElem.height - margin * 2);
+            
+            notes.push({
+                type: 'circle',
+                time: t,
+                x: x, y: y,
+                radius: diff.radius,
+                approachTime: diff.approachTime,
+                hit: false,
+                id: Math.random()
+            });
+        }
+        
+        for (let i = 0; i < diff.doubleCount; i++) {
+            let t = startOffset + 800 + (i / diff.doubleCount) * (endTime - startOffset - 1000);
+            t += (Math.random() - 0.5) * 50;
+            
+            const margin = 70;
+            const centerX = margin + Math.random() * (canvasElem.width - margin * 2);
+            const centerY = margin + Math.random() * (canvasElem.height - margin * 2);
+            
+            const offset = diff.radius * 1.5;
+            const angle = Math.random() * Math.PI * 2;
+            
+            const x1 = centerX + Math.cos(angle) * offset;
+            const y1 = centerY + Math.sin(angle) * offset;
+            const x2 = centerX + Math.cos(angle + Math.PI) * offset;
+            const y2 = centerY + Math.sin(angle + Math.PI) * offset;
+            
+            const margin2 = 80;
+            const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+            
+            notes.push({
+                type: 'double',
+                time: t,
+                x1: clamp(x1, margin2, canvasElem.width - margin2),
+                y1: clamp(y1, margin2, canvasElem.height - margin2),
+                x2: clamp(x2, margin2, canvasElem.width - margin2),
+                y2: clamp(y2, margin2, canvasElem.height - margin2),
+                radius: diff.radius - 2,
+                approachTime: diff.approachTime,
+                hit: false,
+                tapped: 0,
+                id: Math.random()
+            });
+        }
+        
+        notes.sort((a,b) => a.time - b.time);
+        return notes;
+    }
+    
+    // ============================================
+    // BEATMAP STORAGE
     // ============================================
     function getBeatmapData() {
         return {
@@ -614,6 +816,8 @@
         musicName = b.musicName || 'No Music';
         document.getElementById('musicStatus').innerHTML = musicName;
         document.getElementById('beatmapStatus').innerHTML = 'LOADED: ' + b.name;
+        isCustomBeatmap = true;
+        document.getElementById('modeIndicator').innerHTML = 'MODE: CUSTOM';
         updateNoteCount();
         drawBuilder();
     }
@@ -622,6 +826,8 @@
         if (isBuilding) {
             buildingNotes = [];
             buildingDoubles = [];
+            isCustomBeatmap = false;
+            document.getElementById('modeIndicator').innerHTML = 'MODE: DIFFICULTY';
             updateNoteCount();
             document.getElementById('beatmapStatus').innerHTML = 'CLEARED';
             drawBuilder();
@@ -682,7 +888,6 @@
             try {
                 const data = JSON.parse(e.target.result);
                 
-                // Validate
                 if (!data.name || !data.bpm || (!data.circles && !data.doubles)) {
                     document.getElementById('beatmapStatus').innerHTML = 'ERROR: Invalid .osubm file';
                     return;
@@ -702,10 +907,11 @@
                 musicName = data.musicName || 'No Music';
                 document.getElementById('musicStatus').innerHTML = musicName;
                 document.getElementById('beatmapStatus').innerHTML = 'IMPORTED: ' + data.name;
+                isCustomBeatmap = true;
+                document.getElementById('modeIndicator').innerHTML = 'MODE: CUSTOM';
                 updateNoteCount();
                 drawBuilder();
                 
-                // Auto-save imported beatmap
                 saveBeatmap();
                 document.getElementById('beatmapStatus').innerHTML = 'IMPORTED & SAVED: ' + data.name;
                 
@@ -730,11 +936,15 @@
             if (animationId) cancelAnimationFrame(animationId);
             drawBuilder();
             stopMusic();
+            document.getElementById('modeIndicator').innerHTML = 'MODE: BUILDING';
         } else {
             document.getElementById('beatmapStatus').innerHTML = 'IDLE';
             document.getElementById('buildBtn').style.background = '';
             if (buildingNotes.length > 0 || buildingDoubles.length > 0) {
                 document.getElementById('playBtn').style.background = '#66cc88';
+                document.getElementById('modeIndicator').innerHTML = 'MODE: CUSTOM';
+            } else {
+                document.getElementById('modeIndicator').innerHTML = 'MODE: DIFFICULTY';
             }
         }
     }
@@ -745,7 +955,6 @@
         ctx.fillStyle = '#11161f';
         ctx.fillRect(0, 0, canvasElem.width, canvasElem.height);
         
-        // Grid
         ctx.strokeStyle = '#1a1a2e';
         ctx.lineWidth = 1;
         for (let x = 0; x < canvasElem.width; x += 40) {
@@ -761,7 +970,6 @@
             ctx.stroke();
         }
         
-        // Beat lines
         const bpmVal = parseInt(document.getElementById('bpmInput').value) || 120;
         const beatInterval = 60000 / bpmVal;
         for (let t = 0; t < 30000; t += beatInterval) {
@@ -770,7 +978,6 @@
             ctx.fillRect(x - 1, canvasElem.height - 30, 2, 20);
         }
         
-        // Draw building notes
         for (const n of buildingNotes) {
             const x = (n.time / 30000) * (canvasElem.width - 40) + 20;
             const y = n.y || 250;
@@ -811,7 +1018,6 @@
             ctx.fillText('2', x2, (d.y2 || 250));
         }
         
-        // Info
         ctx.fillStyle = '#aab3cf';
         ctx.font = '12px monospace';
         ctx.textAlign = 'left';
@@ -826,7 +1032,6 @@
         const beatInterval = 60000 / bpmVal;
         const time = (canvasX - 20) / (canvasElem.width - 40) * 30000;
         
-        // Check if clicking existing note (delete)
         for (let i = 0; i < buildingNotes.length; i++) {
             const n = buildingNotes[i];
             const nx = (n.time / 30000) * (canvasElem.width - 40) + 20;
@@ -855,12 +1060,10 @@
             }
         }
         
-        // Add new note
         const y = Math.min(canvasElem.height - 40, Math.max(40, canvasY));
         const snapTime = Math.round(time / beatInterval) * beatInterval;
         const clampedTime = Math.min(29000, Math.max(500, snapTime));
         
-        // Check for double tap
         let isDouble = false;
         for (const n of buildingNotes) {
             if (Math.abs(n.time - clampedTime) < 100 && Math.abs(n.y - y) < 60) {
@@ -876,6 +1079,8 @@
                         type: 'double'
                     });
                     isDouble = true;
+                    isCustomBeatmap = true;
+                    document.getElementById('modeIndicator').innerHTML = 'MODE: CUSTOM';
                     break;
                 }
             }
@@ -888,6 +1093,8 @@
                 time: clampedTime,
                 type: 'circle'
             });
+            isCustomBeatmap = true;
+            document.getElementById('modeIndicator').innerHTML = 'MODE: CUSTOM';
         }
         
         updateNoteCount();
@@ -898,8 +1105,50 @@
     // ============================================
     // GAME PLAY
     // ============================================
-    function startGameFromBuilder() {
-        if (buildingNotes.length === 0 && buildingDoubles.length === 0) {
+    function startGame() {
+        stopMusic();
+        
+        activeCircles = [];
+        activeDoubles = [];
+        
+        if (isCustomBeatmap && (buildingNotes.length > 0 || buildingDoubles.length > 0)) {
+            allNotes = [];
+            for (const n of buildingNotes) {
+                allNotes.push({
+                    type: 'circle',
+                    time: n.time,
+                    x: (n.time / 30000) * (canvasElem.width - 40) + 20,
+                    y: n.y,
+                    radius: difficulties[currentDifficulty].radius,
+                    approachTime: difficulties[currentDifficulty].approachTime,
+                    hit: false,
+                    id: Math.random()
+                });
+            }
+            
+            for (const d of buildingDoubles) {
+                const cx = (d.time / 30000) * (canvasElem.width - 40) + 20;
+                allNotes.push({
+                    type: 'double',
+                    time: d.time,
+                    x1: cx,
+                    y1: d.y1,
+                    x2: cx + 30,
+                    y2: d.y2,
+                    radius: difficulties[currentDifficulty].radius - 2,
+                    approachTime: difficulties[currentDifficulty].approachTime,
+                    hit: false,
+                    tapped: 0,
+                    id: Math.random()
+                });
+            }
+        } else {
+            allNotes = generateDifficultyNotes();
+        }
+        
+        allNotes.sort((a,b) => a.time - b.time);
+        
+        if (allNotes.length === 0) {
             document.getElementById('beatmapStatus').innerHTML = 'ERROR: No notes to play';
             return;
         }
@@ -907,41 +1156,6 @@
         if (isBuilding) {
             toggleBuilder();
         }
-        
-        stopMusic();
-        
-        allNotes = [];
-        for (const n of buildingNotes) {
-            allNotes.push({
-                type: 'circle',
-                time: n.time,
-                x: (n.time / 30000) * (canvasElem.width - 40) + 20,
-                y: n.y,
-                radius: difficulties[currentDifficulty].radius,
-                approachTime: 1000,
-                hit: false,
-                id: Math.random()
-            });
-        }
-        
-        for (const d of buildingDoubles) {
-            const cx = (d.time / 30000) * (canvasElem.width - 40) + 20;
-            allNotes.push({
-                type: 'double',
-                time: d.time,
-                x1: cx,
-                y1: d.y1,
-                x2: cx + 30,
-                y2: d.y2,
-                radius: difficulties[currentDifficulty].radius - 2,
-                approachTime: 1000,
-                hit: false,
-                tapped: 0,
-                id: Math.random()
-            });
-        }
-        
-        allNotes.sort((a,b) => a.time - b.time);
         
         gameStarted = true;
         gameActive = true;
@@ -1018,7 +1232,6 @@
         const now = performance.now();
         const elapsed = now - gameStartTime;
         
-        // Double tap notes
         for (const d of activeDoubles) {
             const timeToHit = d.time - elapsed;
             const alpha = Math.min(1, Math.max(0.3, 1 - (d.approachTime - timeToHit) / d.approachTime * 0.5));
@@ -1069,7 +1282,6 @@
             if (!isTapped2) ctx.fillText("2", d.x2, d.y2 + 1);
         }
         
-        // Single circles
         for (const c of activeCircles) {
             const timeToHit = c.time - elapsed;
             let scale = 1.0;
@@ -1097,7 +1309,6 @@
             ctx.fill();
         }
         
-        // Combo
         if (combo >= 5 && gameStarted && gameActive && !deathTriggered) {
             ctx.font = `bold 32px "Courier New"`;
             ctx.fillStyle = "#ffcc66";
@@ -1140,7 +1351,6 @@
         
         const elapsed = performance.now() - gameStartTime;
         
-        // Single circles
         for (let i = 0; i < activeCircles.length; i++) {
             const c = activeCircles[i];
             const dx = c.x - x;
@@ -1179,7 +1389,6 @@
             }
         }
         
-        // Double tap notes
         for (let i = 0; i < activeDoubles.length; i++) {
             const d = activeDoubles[i];
             if (d.hit) continue;
@@ -1282,72 +1491,30 @@
     }
     
     // ============================================
-    // EVENTS
+    // DIFFICULTY BUTTON HANDLING
     // ============================================
-    
-    canvasElem.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        if (touch) handleTap(touch.clientX, touch.clientY);
-    }, { passive: false });
-    
-    canvasElem.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        handleTap(e.clientX, e.clientY);
+    document.querySelectorAll('.diff-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const newDiff = parseInt(btn.dataset.diff);
+            if (!isNaN(newDiff) && newDiff !== currentDifficulty) {
+                currentDifficulty = newDiff;
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('difficultyIndicator').innerHTML = difficulties[currentDifficulty].name;
+                
+                if (!isCustomBeatmap || (buildingNotes.length === 0 && buildingDoubles.length === 0)) {
+                    isCustomBeatmap = false;
+                    document.getElementById('modeIndicator').innerHTML = 'MODE: DIFFICULTY';
+                }
+            }
+        };
     });
     
-    document.getElementById('playBtn').onclick = () => {
-        if (isBuilding) toggleBuilder();
-        startGameFromBuilder();
-    };
-    
-    document.getElementById('buildBtn').onclick = toggleBuilder;
-    document.getElementById('saveBtn').onclick = saveBeatmap;
-    document.getElementById('loadBtn').onclick = loadBeatmapList;
-    document.getElementById('clearBtn').onclick = clearBeatmap;
-    
-    document.getElementById('exportBtn').onclick = exportBeatmap;
-    
-    document.getElementById('importBtn').onclick = () => {
-        document.getElementById('importFileInput').click();
-    };
-    
-    document.getElementById('importFileInput').onchange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            importBeatmap(e.target.files[0]);
-        }
-        e.target.value = '';
-    };
-    
-    document.getElementById('closeListBtn').onclick = () => {
-        document.getElementById('beatmapList').classList.remove('active');
-    };
-    
-    document.getElementById('musicFileInput').onchange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            loadMusicFile(e.target.files[0]);
-        }
-    };
-    
-    document.getElementById('bpmInput').onchange = () => {
-        if (isBuilding) drawBuilder();
-    };
-    
     // ============================================
-    // QUESTIONS & INIT
+    // QUIZ SYSTEM
     // ============================================
-    async function loadQuestions() {
-        try {
-            const response = await fetch('questions.json');
-            if (!response.ok) throw new Error('questions.json not found');
-            const data = await response.json();
-            questionBank = data.questions || data;
-        } catch (error) {
-            questionBank = DEFAULT_QUESTIONS;
-        }
-    }
-    
-    function startQuiz() {
+    function showQuiz() {
         const shuffled = [...questionBank];
         for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -1358,11 +1525,35 @@
         
         const overlay = document.createElement('div');
         overlay.className = 'quiz-overlay';
+        overlay.id = 'quizOverlay';
+        
+        // Show build button during quiz
+        const buildBtn = document.getElementById('buildQuizBtn');
+        buildBtn.classList.remove('hidden');
+        buildBtn.onclick = () => {
+            // Close quiz and enter builder
+            if (overlay && overlay.parentNode) {
+                overlay.remove();
+            }
+            buildBtn.classList.add('hidden');
+            quizActive = false;
+            gameLocked = false;
+            quizCompleted = true;
+            document.getElementById('beatmapStatus').innerHTML = 'READY - BUILD MODE';
+            // Enter builder mode
+            if (!isBuilding) {
+                toggleBuilder();
+            }
+        };
         
         function showQuestion() {
             if (qIndex >= questions.length) {
                 overlay.remove();
-                startGame();
+                buildBtn.classList.add('hidden');
+                quizActive = false;
+                gameLocked = false;
+                quizCompleted = true;
+                document.getElementById('beatmapStatus').innerHTML = 'READY';
                 return;
             }
             const q = questions[qIndex];
@@ -1397,26 +1588,74 @@
         showQuestion();
     }
     
-    function startGame() {
-        quizActive = false;
-        gameLocked = false;
-        document.querySelectorAll('.diff-btn').forEach(btn => {
-            btn.style.pointerEvents = 'auto';
-            btn.style.opacity = '1';
-        });
-    }
+    // ============================================
+    // EVENTS
+    // ============================================
     
-    document.querySelectorAll('.diff-btn').forEach(btn => {
-        if (parseInt(btn.dataset.diff) === currentDifficulty) btn.classList.add('active');
-        btn.style.pointerEvents = 'none';
-        btn.style.opacity = '0.6';
+    canvasElem.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        if (touch) handleTap(touch.clientX, touch.clientY);
+    }, { passive: false });
+    
+    canvasElem.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        handleTap(e.clientX, e.clientY);
     });
+    
+    document.getElementById('playBtn').onclick = startGame;
+    
+    document.getElementById('buildBtn').onclick = toggleBuilder;
+    document.getElementById('saveBtn').onclick = saveBeatmap;
+    document.getElementById('loadBtn').onclick = loadBeatmapList;
+    document.getElementById('clearBtn').onclick = clearBeatmap;
+    
+    document.getElementById('exportBtn').onclick = exportBeatmap;
+    
+    document.getElementById('importBtn').onclick = () => {
+        document.getElementById('importFileInput').click();
+    };
+    
+    document.getElementById('importFileInput').onchange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            importBeatmap(e.target.files[0]);
+        }
+        e.target.value = '';
+    };
+    
+    document.getElementById('closeListBtn').onclick = () => {
+        document.getElementById('beatmapList').classList.remove('active');
+    };
+    
+    document.getElementById('musicFileInput').onchange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            loadMusicFile(e.target.files[0]);
+        }
+    };
+    
+    document.getElementById('bpmInput').onchange = () => {
+        if (isBuilding) drawBuilder();
+    };
+    
+    // ============================================
+    // INIT
+    // ============================================
+    async function loadQuestions() {
+        try {
+            const response = await fetch('questions.json');
+            if (!response.ok) throw new Error('questions.json not found');
+            const data = await response.json();
+            questionBank = data.questions || data;
+        } catch (error) {
+            questionBank = DEFAULT_QUESTIONS;
+        }
+    }
     
     document.getElementById('gameStatusMsg').innerHTML = 'Loading questions...';
     
     loadQuestions().then(() => {
-        document.getElementById('gameStatusMsg').innerHTML = 'Answer 3 questions to start';
-        startQuiz();
+        document.getElementById('gameStatusMsg').innerHTML = '';
+        showQuiz();
     });
 </script>
 </body>
