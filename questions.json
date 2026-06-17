@@ -1,14 +1,14 @@
 {
   "questions": [
     {
-      "question": "What is the capital of Japan?",
-      "options": ["Seoul", "Beijing", "Tokyo", "Bangkok"],
-      "correct": 2
+      "question": "天盛有多少個房間?",
+      "options": ["1", "2", "3", "4"],
+      "correct": 3
     },
     {
-      "question": "Which language is used for web development?",
-      "options": ["Python", "JavaScript", "C++", "Java"],
-      "correct": 1
+      "question": "天盛苑在什麼時候建成?",
+      "options": ["1986", "1987", "1999", "2000"],
+      "correct": 1999
     },
     {
       "question": "What is 15 × 4?",
