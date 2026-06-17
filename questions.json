@@ -3,17 +3,17 @@
     {
       "question": "天盛有多少個房間?",
       "options": ["1", "2", "3", "4"],
-      "correct": 3
+      "correct": 2
     },
     {
       "question": "天盛苑在什麼時候建成?",
       "options": ["1986", "1987", "1999", "2000"],
-      "correct": 1999
+      "correct": 2
     },
     {
-      "question": "What is 15 × 4?",
-      "options": ["45", "50", "60", "65"],
-      "correct": 2
+      "question": "天盛苑的商場裝修過幾多次？",
+      "options": ["1", "2", "3", "4"],
+      "correct": 0
     },
     {
       "question": "Who created the game osu!?",
