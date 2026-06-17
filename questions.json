@@ -1,17 +1,17 @@
 {
   "questions": [
     {
-      "question": "天盛有多少個房間?",
+      "question": "How many rooms does Tin Shing Court have?",
       "options": ["1", "2", "3", "4"],
       "correct": 2
     },
     {
-      "question": "天盛苑在什麼時候建成?",
+      "question": "When was Tin Shing Court finished building?",
       "options": ["1986", "1987", "1999", "2000"],
       "correct": 2
     },
     {
-      "question": "天盛苑的商場裝修過幾多次？",
+      "question": "How many times have the Tin Shing Mall rebuilded？",
       "options": ["1", "2", "3", "4"],
       "correct": 0
     },
