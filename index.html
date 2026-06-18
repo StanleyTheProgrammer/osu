@@ -642,7 +642,6 @@
     
     function playMusic() {
         if (!audioBuffer) {
-            // Music is optional - just continue without it
             return;
         }
         try {
@@ -755,7 +754,6 @@
     // GAME PLAY
     // ============================================
     function startGame() {
-        // Music is optional - no need to check for audioBuffer
         stopMusic();
         
         allNotes = generateNotes();
@@ -790,7 +788,6 @@
             const elapsed = now - gameStartTime;
             
             if (gameActive && !deathTriggered) {
-                // Spawn notes - uses approachTime (normal speed)
                 while (nextNoteIndex < allNotes.length && elapsed >= allNotes[nextNoteIndex].time - allNotes[nextNoteIndex].approachTime) {
                     const note = allNotes[nextNoteIndex];
                     if (note.type === 'circle') {
@@ -803,7 +800,6 @@
                 
                 const timingOk = TIMING.ok * difficulties[currentDifficulty].timingWindow;
                 
-                // Single circle misses
                 for (let i = 0; i < activeCircles.length; i++) {
                     const note = activeCircles[i];
                     if (!note.hit && elapsed > note.time + timingOk + 50) {
@@ -815,12 +811,10 @@
                 }
                 activeCircles = activeCircles.filter(n => !n.hit);
                 
-                // Double note misses
                 for (let i = 0; i < activeDoubles.length; i++) {
                     const note = activeDoubles[i];
                     if (note.hit) continue;
                     
-                    // If first circle is tapped, use slower miss time for second circle
                     const missTime = note.tapped >= 1 ? 
                         note.time + note.approachTime2 + 50 : 
                         note.time + timingOk + 50;
@@ -860,12 +854,10 @@
         const now = performance.now();
         const elapsed = now - gameStartTime;
         
-        // Double notes
         for (const d of activeDoubles) {
             const timeToHit = d.time - elapsed;
             const alpha = Math.min(1, Math.max(0.3, 1 - (d.approachTime - timeToHit) / d.approachTime * 0.5));
             
-            // Connecting line
             ctx.beginPath();
             ctx.moveTo(d.x1, d.y1);
             ctx.lineTo(d.x2, d.y2);
@@ -877,7 +869,6 @@
             
             const isTapped1 = d.tapped >= 1;
             
-            // CIRCLE 1 (first note) - normal speed (approachTime)
             const progress1 = Math.min(1, Math.max(0, 1 - timeToHit / d.approachTime));
             const scale1 = 1.8 - progress1 * 0.8;
             
@@ -892,7 +883,6 @@
             ctx.fillStyle = isTapped1 ? `rgba(100, 200, 100, ${alpha})` : `rgba(255, 100, 160, ${alpha})`;
             ctx.fill();
             
-            // CIRCLE 2 (second note) - SLOWER speed (approachTime2 = 1.5x slower)
             const isTapped2 = d.tapped >= 2;
             const progress2 = Math.min(1, Math.max(0, 1 - timeToHit / d.approachTime2));
             const scale2 = 1.8 - progress2 * 0.8;
@@ -908,7 +898,6 @@
             ctx.fillStyle = isTapped2 ? `rgba(100, 200, 100, ${alpha})` : `rgba(100, 150, 200, ${alpha})`;
             ctx.fill();
             
-            // Labels
             ctx.fillStyle = `rgba(255,255,255,${alpha})`;
             ctx.font = `bold ${d.radius - 4}px Arial`;
             ctx.textAlign = "center";
@@ -917,7 +906,6 @@
             if (!isTapped2) ctx.fillText("2", d.x2, d.y2 + 1);
         }
         
-        // Single circles
         for (const c of activeCircles) {
             const timeToHit = c.time - elapsed;
             let scale = 1.0;
@@ -945,7 +933,6 @@
             ctx.fill();
         }
         
-        // Combo
         if (combo >= 5 && gameStarted && gameActive && !deathTriggered) {
             ctx.font = `bold 32px "Courier New"`;
             ctx.fillStyle = "#ffcc66";
@@ -956,7 +943,6 @@
             ctx.shadowBlur = 0;
         }
         
-        // Progress bar
         const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION));
         ctx.fillStyle = "#ff66aa30";
         ctx.fillRect(20, canvasElem.height - 20, canvasElem.width - 40, 6);
@@ -1007,7 +993,6 @@
         const {x, y} = getCanvasCoords(clientX, clientY);
         const elapsed = performance.now() - gameStartTime;
         
-        // Single circles
         for (let i = 0; i < activeCircles.length; i++) {
             const c = activeCircles[i];
             const dx = c.x - x;
@@ -1028,7 +1013,6 @@
             }
         }
         
-        // Double notes
         for (let i = 0; i < activeDoubles.length; i++) {
             const d = activeDoubles[i];
             if (d.hit) continue;
@@ -1048,7 +1032,6 @@
             const tappedCircle1 = dist1 <= d.radius * 1.5;
             const tappedCircle2 = dist2 <= d.radius * 1.5;
             
-            // Tap circle 1 (first tap)
             if (tappedCircle1 && d.tapped === 0) {
                 d.tapped = 1;
                 d.tap1Time = timeDiff;
@@ -1057,13 +1040,11 @@
                 return;
             }
             
-            // Tap circle 2 (second tap - COMPLETE)
             if (tappedCircle2 && d.tapped === 1) {
                 d.tapped = 2;
                 d.tap2Time = timeDiff;
                 d.hit = true;
                 
-                // Average timing
                 const avgTimeDiff = (d.tap1Time + timeDiff) / 2;
                 const result = getJudgement(avgTimeDiff, scale);
                 
@@ -1081,7 +1062,6 @@
             }
         }
         
-        // Miss
         combo = 0;
         misses++;
         updateUI();
@@ -1200,7 +1180,7 @@
     };
     
     // ============================================
-    // QUIZ WITH SKIP BUTTON
+    // QUIZ WITH SKIP BUTTON - FIXED
     // ============================================
     function showQuiz() {
         const shuffled = [...questionBank];
@@ -1225,7 +1205,7 @@
             const q = questions[qIndex];
             overlay.innerHTML = `
                 <div class="quiz-container">
-                    <div class="progress-badge">QUESTION ' + (qIndex+1) + '/3</div>
+                    <div class="progress-badge">QUESTION ${qIndex+1}/3</div>
                     <div class="progress-badge" style="color:#88ff88">INFINITE ATTEMPTS</div>
                     <div class="quiz-question">${q.question}</div>
                     <div class="quiz-options">
