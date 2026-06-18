@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Rhythm Game + Tutorial</title>
+    <title>osu! · Rhythm Game</title>
     <style>
         * {
             user-select: none;
@@ -81,18 +81,8 @@
             color: white;
         }
 
-        .controls button.success {
-            background: #66cc88;
-            color: white;
-        }
-
         .controls button.danger {
             background: #ff3366;
-            color: white;
-        }
-
-        .controls button.info {
-            background: #4488ff;
             color: white;
         }
 
@@ -107,13 +97,6 @@
             background: #ff66aa;
             color: white;
             box-shadow: 0 0 12px #ff66aa80;
-        }
-
-        .controls button.tutorial-btn {
-            background: #ffaa44;
-            color: #1a1a2e;
-            font-size: 0.65rem;
-            padding: 3px 10px;
         }
 
         .controls label {
@@ -359,189 +342,6 @@
             color: #ff6666;
         }
 
-        /* ============================================
-           TUTORIAL POPUP
-           ============================================ */
-        .tutorial-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.93);
-            backdrop-filter: blur(12px);
-            z-index: 9999;
-            display: none;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .tutorial-overlay.active {
-            display: flex;
-        }
-
-        .tutorial-container {
-            background: linear-gradient(135deg, #1e1b2e, #141121);
-            border-radius: 48px;
-            padding: 30px 25px;
-            max-width: 600px;
-            width: 95%;
-            max-height: 90vh;
-            overflow-y: auto;
-            border: 2px solid #ff88cc;
-            box-shadow: 0 0 60px rgba(255, 136, 204, 0.2);
-            position: relative;
-        }
-
-        .tutorial-title {
-            font-size: 1.8rem;
-            font-weight: 900;
-            color: #ff66aa;
-            text-align: center;
-            margin-bottom: 20px;
-            font-family: monospace;
-            letter-spacing: 2px;
-        }
-
-        .tutorial-video-container {
-            background: #0a0a1a;
-            border-radius: 20px;
-            overflow: hidden;
-            margin-bottom: 20px;
-            position: relative;
-            aspect-ratio: 16/9;
-            border: 1px solid #4a4a6a;
-        }
-
-        .tutorial-video-container video {
-            width: 100%;
-            height: 100%;
-            display: block;
-            background: #000;
-            object-fit: contain;
-        }
-
-        .tutorial-video-placeholder {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: #0a0a1a;
-            color: #aab3cf;
-            font-size: 1rem;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .tutorial-video-placeholder .big-icon {
-            font-size: 4rem;
-            margin-bottom: 15px;
-            opacity: 0.5;
-        }
-
-        .tutorial-video-placeholder .sub {
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .tutorial-steps {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin: 15px 0 20px 0;
-        }
-
-        .tutorial-step {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            padding: 10px 14px;
-            background: rgba(255,255,255,0.04);
-            border-radius: 14px;
-            border-left: 3px solid #ff66aa;
-        }
-
-        .tutorial-step .num {
-            font-size: 1.2rem;
-            font-weight: 900;
-            color: #ff66aa;
-            min-width: 28px;
-            font-family: monospace;
-        }
-
-        .tutorial-step .text {
-            color: #d0d0f0;
-            font-size: 0.9rem;
-            line-height: 1.4;
-        }
-
-        .tutorial-step .text strong {
-            color: #ff66aa;
-        }
-
-        .tutorial-step .text .highlight {
-            color: #ffd700;
-        }
-
-        .tutorial-step .text .highlight2 {
-            color: #88aaff;
-        }
-
-        .tutorial-difficulties {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-top: 4px;
-        }
-
-        .tutorial-diff-badge {
-            background: #1e2438;
-            padding: 2px 12px;
-            border-radius: 40px;
-            font-size: 0.65rem;
-            font-weight: bold;
-        }
-
-        .tutorial-diff-badge.easy { border: 1px solid #88ff88; color: #88ff88; }
-        .tutorial-diff-badge.normal { border: 1px solid #ffaa66; color: #ffaa66; }
-        .tutorial-diff-badge.hard { border: 1px solid #ff6666; color: #ff6666; }
-        .tutorial-diff-badge.insane { border: 1px solid #ff44ff; color: #ff44ff; }
-
-        .tutorial-close-btn {
-            background: #ff66aa;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 60px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            transition: 0.2s;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .tutorial-close-btn:active {
-            transform: scale(0.97);
-        }
-
-        .tutorial-container::-webkit-scrollbar {
-            width: 4px;
-        }
-        .tutorial-container::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .tutorial-container::-webkit-scrollbar-thumb {
-            background: #ff66aa;
-            border-radius: 10px;
-        }
-
         @media (max-width: 768px) {
             body { padding: 5px; }
             .floating-judgement { font-size: 1.2rem; }
@@ -552,11 +352,6 @@
             .controls input[type="file"] { min-width: 80px; }
             .quiz-container { padding: 15px; }
             .quiz-question { font-size: 1rem; }
-            .tutorial-container { padding: 20px 15px; }
-            .tutorial-title { font-size: 1.4rem; }
-            .tutorial-step .text { font-size: 0.8rem; }
-            .tutorial-video-placeholder .big-icon { font-size: 2.5rem; }
-            .tutorial-video-placeholder { font-size: 0.8rem; }
         }
     </style>
 </head>
@@ -580,8 +375,6 @@
         <button class="diff-btn" data-diff="2">HARD</button>
         <button class="diff-btn" data-diff="3">INSANE</button>
         
-        <button class="tutorial-btn" id="tutorialBtn">📖 TUTORIAL</button>
-        
         <span style="color:#666;font-size:0.6rem;">|</span>
         
         <label>MUSIC</label>
@@ -597,86 +390,9 @@
     </div>
 </div>
 
-<!-- ============================================
-     TUTORIAL POPUP
-     ============================================ -->
-<div class="tutorial-overlay" id="tutorialOverlay">
-    <div class="tutorial-container">
-        <div class="tutorial-title">🎯 HOW TO PLAY</div>
-        
-        <!-- Video/Animation Placeholder -->
-        <div class="tutorial-video-container">
-            <div class="tutorial-video-placeholder" id="videoPlaceholder">
-                <div class="big-icon">🎬</div>
-                <div>Watch how to play</div>
-                <div class="sub">Tap circles & follow the rhythm!</div>
-                <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-                    <span style="background:#ff66aa;padding:2px 10px;border-radius:40px;font-size:0.7rem;color:white;">● TAP</span>
-                    <span style="background:#88aaff;padding:2px 10px;border-radius:40px;font-size:0.7rem;color:white;">●● DOUBLE</span>
-                    <span style="background:#ffd700;padding:2px 10px;border-radius:40px;font-size:0.7rem;color:#1a1a2e;">⚡ COMBO</span>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Steps -->
-        <div class="tutorial-steps">
-            <div class="tutorial-step">
-                <div class="num">1</div>
-                <div class="text">
-                    <strong>Upload Music</strong> — Click <strong>MUSIC</strong> and select an audio file (MP3, WAV, OGG).<br>
-                    <span style="color:#88aaff;font-size:0.75rem;">💾 Music saves automatically!</span>
-                </div>
-            </div>
-            
-            <div class="tutorial-step">
-                <div class="num">2</div>
-                <div class="text">
-                    <strong>Choose Difficulty</strong>
-                    <div class="tutorial-difficulties">
-                        <span class="tutorial-diff-badge easy">EASY</span>
-                        <span class="tutorial-diff-badge normal">NORMAL</span>
-                        <span class="tutorial-diff-badge hard">HARD</span>
-                        <span class="tutorial-diff-badge insane">INSANE</span>
-                    </div>
-                    <span style="color:#aab3cf;font-size:0.75rem;">Higher difficulty = more notes + faster approach</span>
-                </div>
-            </div>
-            
-            <div class="tutorial-step">
-                <div class="num">3</div>
-                <div class="text">
-                    <strong>Tap Circles</strong><br>
-                    <span class="highlight">●</span> <strong>Single</strong> — Tap when the outer ring shrinks to the pink circle.<br>
-                    <span class="highlight2">● ●</span> <strong>Double</strong> — Tap <strong>1</strong> then <strong>2</strong> in order (connected by dotted line).
-                </div>
-            </div>
-            
-            <div class="tutorial-step">
-                <div class="num">4</div>
-                <div class="text">
-                    <strong>Keep Accuracy</strong><br>
-                    Accuracy shown at top-left.<br>
-                    <strong style="color:#ff3366;">Below 60% = GAME OVER!</strong>
-                </div>
-            </div>
-            
-            <div class="tutorial-step">
-                <div class="num">5</div>
-                <div class="text">
-                    <strong>Build Combo</strong><br>
-                    Tap consecutively for <strong style="color:#ffd700;">bonus points</strong>!<br>
-                    <span style="color:#aab3cf;font-size:0.75rem;">🔥 Higher combo = more points per note!</span>
-                </div>
-            </div>
-        </div>
-        
-        <button class="tutorial-close-btn" id="tutorialCloseBtn">GOT IT! LET'S PLAY</button>
-    </div>
-</div>
-
 <script>
     // ============================================
-    // OSU! GAME + INDEXEDDB MUSIC + TUTORIAL
+    // OSU! GAME + INDEXEDDB MUSIC
     // ============================================
     
     const DEFAULT_QUESTIONS = [
@@ -726,25 +442,6 @@
     canvasElem.width = 800;
     canvasElem.height = 500;
     ctx = canvasElem.getContext('2d');
-    
-    // ============================================
-    // TUTORIAL
-    // ============================================
-    function showTutorial() {
-        document.getElementById('tutorialOverlay').classList.add('active');
-    }
-    
-    function hideTutorial() {
-        document.getElementById('tutorialOverlay').classList.remove('active');
-    }
-    
-    document.getElementById('tutorialBtn').onclick = showTutorial;
-    document.getElementById('tutorialCloseBtn').onclick = hideTutorial;
-    
-    // Close tutorial by clicking outside
-    document.getElementById('tutorialOverlay').onclick = (e) => {
-        if (e.target === e.currentTarget) hideTutorial();
-    };
     
     // ============================================
     // INDEXEDDB MUSIC STORAGE
@@ -1507,14 +1204,6 @@
     }
     
     document.getElementById('gameStatus').innerHTML = 'Loading...';
-    
-    // Show tutorial on first visit
-    if (!localStorage.getItem('osuTutorialShown')) {
-        setTimeout(() => {
-            showTutorial();
-            localStorage.setItem('osuTutorialShown', 'true');
-        }, 800);
-    }
     
     loadSavedMusic();
     
