@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Rhythm Game + Music Storage</title>
+    <title>osu! · Rhythm Game + Tutorial</title>
     <style>
         * {
             user-select: none;
@@ -49,7 +49,7 @@
 
         .controls {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
             padding: 8px 10px;
             background: rgba(0,0,0,0.6);
@@ -63,8 +63,8 @@
             border: none;
             font-family: inherit;
             font-weight: bold;
-            font-size: 0.75rem;
-            padding: 5px 14px;
+            font-size: 0.7rem;
+            padding: 4px 12px;
             border-radius: 40px;
             color: #eff3ff;
             cursor: pointer;
@@ -91,11 +91,16 @@
             color: white;
         }
 
+        .controls button.info {
+            background: #4488ff;
+            color: white;
+        }
+
         .controls button.diff-btn {
             background: #1e2438;
             color: #cbd5ff;
-            font-size: 0.7rem;
-            padding: 4px 10px;
+            font-size: 0.65rem;
+            padding: 3px 8px;
         }
 
         .controls button.diff-btn.active {
@@ -104,9 +109,16 @@
             box-shadow: 0 0 12px #ff66aa80;
         }
 
+        .controls button.tutorial-btn {
+            background: #ffaa44;
+            color: #1a1a2e;
+            font-size: 0.65rem;
+            padding: 3px 10px;
+        }
+
         .controls label {
             color: #aab3cf;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             font-weight: bold;
         }
 
@@ -114,23 +126,28 @@
             background: #1e2438;
             border: 1px solid #4a4a6a;
             border-radius: 40px;
-            padding: 3px 10px;
+            padding: 2px 8px;
             color: #f0e6ff;
             font-family: inherit;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             outline: none;
-            min-width: 100px;
+            min-width: 80px;
         }
 
         .controls input:focus {
             border-color: #ff66aa;
         }
 
+        .controls input[type="file"] {
+            min-width: 100px;
+            padding: 2px 6px;
+        }
+
         .status-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             padding: 4px 12px;
             background: rgba(0,0,0,0.4);
             border-radius: 12px;
@@ -140,7 +157,7 @@
 
         .status-bar span {
             color: #aab3cf;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             font-family: monospace;
         }
 
@@ -275,7 +292,7 @@
         .quiz-container {
             background: linear-gradient(135deg, #1e1b2e, #141121);
             border-radius: 48px;
-            padding: 30px 25px;
+            padding: 25px 20px;
             max-width: 500px;
             width: 90%;
             border: 2px solid #ff88cc;
@@ -283,7 +300,7 @@
         }
 
         .quiz-question {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: 800;
             color: #ffd966;
             margin-bottom: 20px;
@@ -300,13 +317,13 @@
         .quiz-opt {
             background: #2a2342;
             border: 2px solid #5a4a8a;
-            padding: 14px 20px;
+            padding: 12px 18px;
             border-radius: 60px;
             color: #f0e6ff;
             font-weight: bold;
             cursor: pointer;
             text-align: center;
-            font-size: 1rem;
+            font-size: 0.95rem;
             transition: all 0.2s;
             -webkit-tap-highlight-color: transparent;
         }
@@ -318,14 +335,15 @@
 
         .progress-badge {
             text-align: center;
-            font-size: 1rem;
+            font-size: 0.9rem;
             margin-bottom: 15px;
             color: #ffaa88;
             font-weight: bold;
         }
 
-        .file-input-hidden {
-            display: none;
+        .file-size {
+            color: #88aaff;
+            font-size: 0.6rem;
         }
 
         .music-status {
@@ -333,15 +351,212 @@
             font-weight: bold;
         }
 
+        .music-status.loading {
+            color: #ffaa44;
+        }
+
+        .music-status.error {
+            color: #ff6666;
+        }
+
+        /* ============================================
+           TUTORIAL POPUP
+           ============================================ */
+        .tutorial-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.93);
+            backdrop-filter: blur(12px);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .tutorial-overlay.active {
+            display: flex;
+        }
+
+        .tutorial-container {
+            background: linear-gradient(135deg, #1e1b2e, #141121);
+            border-radius: 48px;
+            padding: 30px 25px;
+            max-width: 600px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 2px solid #ff88cc;
+            box-shadow: 0 0 60px rgba(255, 136, 204, 0.2);
+            position: relative;
+        }
+
+        .tutorial-title {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #ff66aa;
+            text-align: center;
+            margin-bottom: 20px;
+            font-family: monospace;
+            letter-spacing: 2px;
+        }
+
+        .tutorial-video-container {
+            background: #0a0a1a;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            position: relative;
+            aspect-ratio: 16/9;
+            border: 1px solid #4a4a6a;
+        }
+
+        .tutorial-video-container video {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: #000;
+            object-fit: contain;
+        }
+
+        .tutorial-video-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #0a0a1a;
+            color: #aab3cf;
+            font-size: 1rem;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .tutorial-video-placeholder .big-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .tutorial-video-placeholder .sub {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .tutorial-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin: 15px 0 20px 0;
+        }
+
+        .tutorial-step {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 10px 14px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 14px;
+            border-left: 3px solid #ff66aa;
+        }
+
+        .tutorial-step .num {
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: #ff66aa;
+            min-width: 28px;
+            font-family: monospace;
+        }
+
+        .tutorial-step .text {
+            color: #d0d0f0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .tutorial-step .text strong {
+            color: #ff66aa;
+        }
+
+        .tutorial-step .text .highlight {
+            color: #ffd700;
+        }
+
+        .tutorial-step .text .highlight2 {
+            color: #88aaff;
+        }
+
+        .tutorial-difficulties {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .tutorial-diff-badge {
+            background: #1e2438;
+            padding: 2px 12px;
+            border-radius: 40px;
+            font-size: 0.65rem;
+            font-weight: bold;
+        }
+
+        .tutorial-diff-badge.easy { border: 1px solid #88ff88; color: #88ff88; }
+        .tutorial-diff-badge.normal { border: 1px solid #ffaa66; color: #ffaa66; }
+        .tutorial-diff-badge.hard { border: 1px solid #ff6666; color: #ff6666; }
+        .tutorial-diff-badge.insane { border: 1px solid #ff44ff; color: #ff44ff; }
+
+        .tutorial-close-btn {
+            background: #ff66aa;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 60px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .tutorial-close-btn:active {
+            transform: scale(0.97);
+        }
+
+        .tutorial-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .tutorial-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .tutorial-container::-webkit-scrollbar-thumb {
+            background: #ff66aa;
+            border-radius: 10px;
+        }
+
         @media (max-width: 768px) {
             body { padding: 5px; }
             .floating-judgement { font-size: 1.2rem; }
             .death-title { font-size: 2rem; }
             .controls { gap: 4px; }
-            .controls button { font-size: 0.6rem; padding: 3px 10px; }
-            .controls input { font-size: 0.6rem; padding: 2px 8px; min-width: 80px; }
-            .quiz-container { padding: 20px 15px; }
-            .quiz-question { font-size: 1.1rem; }
+            .controls button { font-size: 0.55rem; padding: 3px 8px; }
+            .controls input { font-size: 0.55rem; padding: 2px 6px; min-width: 60px; }
+            .controls input[type="file"] { min-width: 80px; }
+            .quiz-container { padding: 15px; }
+            .quiz-question { font-size: 1rem; }
+            .tutorial-container { padding: 20px 15px; }
+            .tutorial-title { font-size: 1.4rem; }
+            .tutorial-step .text { font-size: 0.8rem; }
+            .tutorial-video-placeholder .big-icon { font-size: 2.5rem; }
+            .tutorial-video-placeholder { font-size: 0.8rem; }
         }
     </style>
 </head>
@@ -354,9 +569,9 @@
     <canvas id="gameCanvas" width="800" height="500"></canvas>
     
     <div class="controls">
-        <button class="primary" id="playBtn">▶ PLAY</button>
-        <button id="resetBtn">🔄 RESTART</button>
-        <button id="clearMusicBtn" class="danger">🗑 CLEAR MUSIC</button>
+        <button class="primary" id="playBtn">PLAY</button>
+        <button id="resetBtn">RESTART</button>
+        <button id="clearMusicBtn" class="danger">CLEAR</button>
         
         <span style="color:#666;font-size:0.6rem;">|</span>
         
@@ -365,10 +580,13 @@
         <button class="diff-btn" data-diff="2">HARD</button>
         <button class="diff-btn" data-diff="3">INSANE</button>
         
+        <button class="tutorial-btn" id="tutorialBtn">📖 TUTORIAL</button>
+        
         <span style="color:#666;font-size:0.6rem;">|</span>
         
-        <label>UPLOAD MUSIC</label>
-        <input type="file" id="musicFileInput" accept="audio/*" style="width:120px;padding:2px 8px;font-size:0.6rem;">
+        <label>MUSIC</label>
+        <input type="file" id="musicFileInput" accept="audio/*">
+        <span id="fileSizeDisplay" class="file-size"></span>
     </div>
     
     <div class="status-bar">
@@ -379,9 +597,86 @@
     </div>
 </div>
 
+<!-- ============================================
+     TUTORIAL POPUP
+     ============================================ -->
+<div class="tutorial-overlay" id="tutorialOverlay">
+    <div class="tutorial-container">
+        <div class="tutorial-title">🎯 HOW TO PLAY</div>
+        
+        <!-- Video/Animation Placeholder -->
+        <div class="tutorial-video-container">
+            <div class="tutorial-video-placeholder" id="videoPlaceholder">
+                <div class="big-icon">🎬</div>
+                <div>Watch how to play</div>
+                <div class="sub">Tap circles & follow the rhythm!</div>
+                <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                    <span style="background:#ff66aa;padding:2px 10px;border-radius:40px;font-size:0.7rem;color:white;">● TAP</span>
+                    <span style="background:#88aaff;padding:2px 10px;border-radius:40px;font-size:0.7rem;color:white;">●● DOUBLE</span>
+                    <span style="background:#ffd700;padding:2px 10px;border-radius:40px;font-size:0.7rem;color:#1a1a2e;">⚡ COMBO</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Steps -->
+        <div class="tutorial-steps">
+            <div class="tutorial-step">
+                <div class="num">1</div>
+                <div class="text">
+                    <strong>Upload Music</strong> — Click <strong>MUSIC</strong> and select an audio file (MP3, WAV, OGG).<br>
+                    <span style="color:#88aaff;font-size:0.75rem;">💾 Music saves automatically!</span>
+                </div>
+            </div>
+            
+            <div class="tutorial-step">
+                <div class="num">2</div>
+                <div class="text">
+                    <strong>Choose Difficulty</strong>
+                    <div class="tutorial-difficulties">
+                        <span class="tutorial-diff-badge easy">EASY</span>
+                        <span class="tutorial-diff-badge normal">NORMAL</span>
+                        <span class="tutorial-diff-badge hard">HARD</span>
+                        <span class="tutorial-diff-badge insane">INSANE</span>
+                    </div>
+                    <span style="color:#aab3cf;font-size:0.75rem;">Higher difficulty = more notes + faster approach</span>
+                </div>
+            </div>
+            
+            <div class="tutorial-step">
+                <div class="num">3</div>
+                <div class="text">
+                    <strong>Tap Circles</strong><br>
+                    <span class="highlight">●</span> <strong>Single</strong> — Tap when the outer ring shrinks to the pink circle.<br>
+                    <span class="highlight2">● ●</span> <strong>Double</strong> — Tap <strong>1</strong> then <strong>2</strong> in order (connected by dotted line).
+                </div>
+            </div>
+            
+            <div class="tutorial-step">
+                <div class="num">4</div>
+                <div class="text">
+                    <strong>Keep Accuracy</strong><br>
+                    Accuracy shown at top-left.<br>
+                    <strong style="color:#ff3366;">Below 60% = GAME OVER!</strong>
+                </div>
+            </div>
+            
+            <div class="tutorial-step">
+                <div class="num">5</div>
+                <div class="text">
+                    <strong>Build Combo</strong><br>
+                    Tap consecutively for <strong style="color:#ffd700;">bonus points</strong>!<br>
+                    <span style="color:#aab3cf;font-size:0.75rem;">🔥 Higher combo = more points per note!</span>
+                </div>
+            </div>
+        </div>
+        
+        <button class="tutorial-close-btn" id="tutorialCloseBtn">GOT IT! LET'S PLAY</button>
+    </div>
+</div>
+
 <script>
     // ============================================
-    // OSU! GAME + MUSIC SAVED IN LOCALSTORAGE
+    // OSU! GAME + INDEXEDDB MUSIC + TUTORIAL
     // ============================================
     
     const DEFAULT_QUESTIONS = [
@@ -401,6 +696,9 @@
     const BASE_SCORE = 250;
     const DOUBLE_SCORE = 400;
     const GAME_DURATION = 30000;
+    const DB_NAME = 'osuMusicDB';
+    const STORE_NAME = 'musicStore';
+    const MUSIC_KEY = 'savedMusic';
     
     let canvas, ctx;
     let activeCircles = [];
@@ -418,7 +716,7 @@
     let audioBuffer = null;
     let audioSource = null;
     let musicName = 'No Music';
-    let savedMusicData = null;
+    let musicFileSize = 0;
     
     let quizActive = true, gameLocked = true;
     let questionBank = [];
@@ -430,79 +728,100 @@
     ctx = canvasElem.getContext('2d');
     
     // ============================================
-    // LOCALSTORAGE MUSIC SAVE/LOAD
+    // TUTORIAL
     // ============================================
-    const MUSIC_STORAGE_KEY = 'osuSavedMusic';
+    function showTutorial() {
+        document.getElementById('tutorialOverlay').classList.add('active');
+    }
     
-    function saveMusicToStorage(name, data) {
-        try {
-            const musicData = {
-                name: name,
-                data: data,
-                savedAt: Date.now()
+    function hideTutorial() {
+        document.getElementById('tutorialOverlay').classList.remove('active');
+    }
+    
+    document.getElementById('tutorialBtn').onclick = showTutorial;
+    document.getElementById('tutorialCloseBtn').onclick = hideTutorial;
+    
+    // Close tutorial by clicking outside
+    document.getElementById('tutorialOverlay').onclick = (e) => {
+        if (e.target === e.currentTarget) hideTutorial();
+    };
+    
+    // ============================================
+    // INDEXEDDB MUSIC STORAGE
+    // ============================================
+    
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME);
+                }
             };
-            localStorage.setItem(MUSIC_STORAGE_KEY, JSON.stringify(musicData));
-            console.log('🎵 Music saved to localStorage');
-            return true;
-        } catch (e) {
-            console.error('Failed to save music:', e);
-            // If storage is full (file too large), show error
-            if (e.name === 'QuotaExceededError') {
-                alert('⚠️ Music file too large for localStorage. Try a smaller file (under 10MB).');
+            request.onsuccess = (e) => resolve(e.target.result);
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+    
+    function saveMusicToDB(name, data, size) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                
+                const musicData = {
+                    name: name,
+                    data: data,
+                    size: size,
+                    savedAt: Date.now()
+                };
+                
+                const request = store.put(musicData, MUSIC_KEY);
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(request.error);
+            } catch (e) {
+                reject(e);
             }
-            return false;
-        }
+        });
     }
     
-    function loadMusicFromStorage() {
-        try {
-            const stored = localStorage.getItem(MUSIC_STORAGE_KEY);
-            if (!stored) return null;
-            const musicData = JSON.parse(stored);
-            return musicData;
-        } catch (e) {
-            console.error('Failed to load music:', e);
-            return null;
-        }
-    }
-    
-    function clearMusicFromStorage() {
-        localStorage.removeItem(MUSIC_STORAGE_KEY);
-        console.log('🗑 Music cleared from localStorage');
-        document.getElementById('musicStatus').innerHTML = 'NO MUSIC';
-        document.getElementById('musicStatus').style.color = '#ff6666';
-        musicName = 'No Music';
-        audioBuffer = null;
-        savedMusicData = null;
-    }
-    
-    async function loadSavedMusic() {
-        const stored = loadMusicFromStorage();
-        if (!stored) return false;
-        
-        try {
-            // Decode base64 audio data
-            const binaryString = atob(stored.data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+    function loadMusicFromDB() {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.get(MUSIC_KEY);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            } catch (e) {
+                reject(e);
             }
-            const arrayBuffer = bytes.buffer;
-            
-            const ctx = initAudio();
-            audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-            musicName = stored.name;
-            savedMusicData = stored;
-            
-            document.getElementById('musicStatus').innerHTML = '💾 ' + musicName;
-            document.getElementById('musicStatus').style.color = '#88ff88';
-            document.getElementById('gameStatus').innerHTML = 'MUSIC LOADED FROM STORAGE';
-            return true;
-        } catch (err) {
-            console.error('Error loading saved music:', err);
-            clearMusicFromStorage();
-            return false;
-        }
+        });
+    }
+    
+    function clearMusicFromDB() {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.delete(MUSIC_KEY);
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(request.error);
+            } catch (e) {
+                reject(e);
+            }
+        });
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+        return (bytes / 1073741824).toFixed(1) + ' GB';
     }
     
     // ============================================
@@ -515,55 +834,105 @@
         return audioContext;
     }
     
-    function loadMusicFile(file) {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const ctx = initAudio();
-                const arrayBuffer = e.target.result;
-                audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-                
-                // Save to localStorage (convert to base64)
-                const bytes = new Uint8Array(arrayBuffer);
-                let binary = '';
-                for (let i = 0; i < bytes.length; i++) {
-                    binary += String.fromCharCode(bytes[i]);
-                }
-                const base64Data = btoa(binary);
-                
-                const saved = saveMusicToStorage(file.name, base64Data);
-                if (saved) {
-                    musicName = file.name;
-                    savedMusicData = { name: file.name, data: base64Data };
-                    document.getElementById('musicStatus').innerHTML = '💾 ' + musicName;
-                    document.getElementById('musicStatus').style.color = '#88ff88';
-                    document.getElementById('gameStatus').innerHTML = 'MUSIC SAVED';
-                }
-            } catch (err) {
-                console.error('Error loading music:', err);
-                document.getElementById('musicStatus').innerHTML = '❌ ERROR';
-                document.getElementById('musicStatus').style.color = '#ff6666';
+    async function loadMusicFile(file) {
+        const statusEl = document.getElementById('musicStatus');
+        statusEl.className = 'music-status loading';
+        statusEl.innerHTML = '⏳ LOADING...';
+        
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const ctx = initAudio();
+            audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+            
+            const dataArray = new Uint8Array(arrayBuffer);
+            await saveMusicToDB(file.name, dataArray, arrayBuffer.byteLength);
+            
+            musicName = file.name;
+            musicFileSize = arrayBuffer.byteLength;
+            
+            document.getElementById('fileSizeDisplay').innerHTML = formatFileSize(musicFileSize);
+            statusEl.className = 'music-status';
+            statusEl.innerHTML = '💾 ' + musicName;
+            document.getElementById('gameStatus').innerHTML = 'MUSIC SAVED';
+            
+            console.log('🎵 Music saved to IndexedDB:', musicName, formatFileSize(musicFileSize));
+        } catch (err) {
+            console.error('Error loading music:', err);
+            statusEl.className = 'music-status error';
+            statusEl.innerHTML = '❌ ERROR';
+            document.getElementById('gameStatus').innerHTML = 'ERROR: ' + err.message;
+        }
+    }
+    
+    async function loadSavedMusic() {
+        const statusEl = document.getElementById('musicStatus');
+        statusEl.className = 'music-status loading';
+        statusEl.innerHTML = '⏳ LOADING...';
+        
+        try {
+            const stored = await loadMusicFromDB();
+            if (!stored) {
+                statusEl.className = 'music-status';
+                statusEl.innerHTML = 'NO MUSIC';
+                return false;
             }
-        };
-        reader.readAsArrayBuffer(file);
+            
+            const ctx = initAudio();
+            const arrayBuffer = stored.data.buffer;
+            audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+            musicName = stored.name;
+            musicFileSize = stored.size || 0;
+            
+            document.getElementById('fileSizeDisplay').innerHTML = formatFileSize(musicFileSize);
+            statusEl.className = 'music-status';
+            statusEl.innerHTML = '💾 ' + musicName;
+            document.getElementById('gameStatus').innerHTML = 'MUSIC LOADED FROM STORAGE';
+            
+            console.log('🎵 Music loaded from IndexedDB:', musicName, formatFileSize(musicFileSize));
+            return true;
+        } catch (err) {
+            console.error('Error loading saved music:', err);
+            statusEl.className = 'music-status error';
+            statusEl.innerHTML = '❌ CORRUPT';
+            await clearMusicFromDB();
+            return false;
+        }
+    }
+    
+    async function clearMusic() {
+        try {
+            await clearMusicFromDB();
+            audioBuffer = null;
+            musicName = 'No Music';
+            musicFileSize = 0;
+            document.getElementById('fileSizeDisplay').innerHTML = '';
+            const statusEl = document.getElementById('musicStatus');
+            statusEl.className = 'music-status';
+            statusEl.innerHTML = 'NO MUSIC';
+            document.getElementById('gameStatus').innerHTML = 'MUSIC CLEARED';
+            console.log('🗑 Music cleared from IndexedDB');
+        } catch (e) {
+            console.error('Error clearing music:', e);
+        }
     }
     
     function playMusic() {
-        if (!audioBuffer) return;
+        if (!audioBuffer) {
+            document.getElementById('gameStatus').innerHTML = '⚠️ NO MUSIC';
+            return;
+        }
         try {
             const ctx = initAudio();
             if (audioSource) {
-                try {
-                    audioSource.stop();
-                    audioSource.disconnect();
-                } catch(e) {}
+                try { audioSource.stop(); audioSource.disconnect(); } catch(e) {}
             }
             audioSource = ctx.createBufferSource();
             audioSource.buffer = audioBuffer;
             audioSource.connect(ctx.destination);
             audioSource.start(0);
-            document.getElementById('musicStatus').innerHTML = '▶ ' + musicName;
-            document.getElementById('musicStatus').style.color = '#ffcc66';
+            const statusEl = document.getElementById('musicStatus');
+            statusEl.className = 'music-status';
+            statusEl.innerHTML = '▶ ' + musicName;
         } catch (err) {
             console.error('Error playing music:', err);
         }
@@ -571,15 +940,13 @@
     
     function stopMusic() {
         if (audioSource) {
-            try {
-                audioSource.stop();
-                audioSource.disconnect();
-            } catch(e) {}
+            try { audioSource.stop(); audioSource.disconnect(); } catch(e) {}
             audioSource = null;
         }
         if (musicName !== 'No Music') {
-            document.getElementById('musicStatus').innerHTML = '⏸ ' + musicName;
-            document.getElementById('musicStatus').style.color = '#88ff88';
+            const statusEl = document.getElementById('musicStatus');
+            statusEl.className = 'music-status';
+            statusEl.innerHTML = '⏸ ' + musicName;
         }
     }
     
@@ -1055,16 +1422,17 @@
         draw();
     };
     
-    document.getElementById('clearMusicBtn').onclick = () => {
-        if (confirm('Clear saved music from localStorage?')) {
-            clearMusicFromStorage();
-            document.getElementById('gameStatus').innerHTML = 'MUSIC CLEARED';
+    document.getElementById('clearMusicBtn').onclick = async () => {
+        if (confirm('Clear saved music from storage?')) {
+            await clearMusic();
         }
     };
     
     document.getElementById('musicFileInput').onchange = (e) => {
         if (e.target.files && e.target.files[0]) {
-            loadMusicFile(e.target.files[0]);
+            const file = e.target.files[0];
+            document.getElementById('fileSizeDisplay').innerHTML = formatFileSize(file.size) + ' (uploading...)';
+            loadMusicFile(file);
             document.getElementById('gameStatus').innerHTML = 'MUSIC UPLOADED & SAVED';
         }
     };
@@ -1140,10 +1508,15 @@
     
     document.getElementById('gameStatus').innerHTML = 'Loading...';
     
-    // Try to load saved music first
-    loadSavedMusic().then(() => {
-        console.log('Music loaded from storage');
-    });
+    // Show tutorial on first visit
+    if (!localStorage.getItem('osuTutorialShown')) {
+        setTimeout(() => {
+            showTutorial();
+            localStorage.setItem('osuTutorialShown', 'true');
+        }, 800);
+    }
+    
+    loadSavedMusic();
     
     loadQuestions().then(() => {
         document.getElementById('gameStatus').innerHTML = 'Answer 3 questions';
