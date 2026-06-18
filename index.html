@@ -416,6 +416,9 @@
     const STORE_NAME = 'musicStore';
     const MUSIC_KEY = 'savedMusic';
     
+    // DOUBLE NOTE: second circle shrinks slower (1.5x slower)
+    const DOUBLE_SECOND_SCALE = 1.5;
+    
     let canvas, ctx;
     let activeCircles = [];
     let activeDoubles = [];
@@ -703,6 +706,8 @@
                 y2: clamp(y2, margin2, canvasElem.height - margin2),
                 radius: diff.radius - 2,
                 approachTime: diff.approachTime,
+                // Second circle stays visible 1.5x longer
+                approachTime2: diff.approachTime * DOUBLE_SECOND_SCALE,
                 hit: false,
                 tapped: 0,
                 id: Math.random()
@@ -779,7 +784,12 @@
                 
                 for (let i = 0; i < activeDoubles.length; i++) {
                     const note = activeDoubles[i];
-                    if (!note.hit && elapsed > note.time + timingOk + 50) {
+                    // Use approachTime2 (slower) for miss detection on second circle
+                    const missTime = note.tapped >= 1 ? 
+                        note.time + (note.approachTime2 || note.approachTime) + 50 : 
+                        note.time + timingOk + 50;
+                    
+                    if (!note.hit && elapsed > missTime) {
                         note.hit = true;
                         combo = 0;
                         misses++;
@@ -832,6 +842,7 @@
             
             const isTapped1 = d.tapped >= 1;
             
+            // Circle 1 - normal speed
             ctx.beginPath();
             ctx.arc(d.x1, d.y1, d.radius * scale, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255, 180, 220, ${isTapped1 ? 0.3 : alpha})`;
@@ -843,10 +854,16 @@
             ctx.fillStyle = isTapped1 ? `rgba(100, 200, 100, ${alpha})` : `rgba(255, 100, 160, ${alpha})`;
             ctx.fill();
             
+            // Circle 2 - SLOWER shrink (1.5x slower)
             const isTapped2 = d.tapped >= 2;
             
+            // Slower approach time for circle 2
+            const approachTime2 = d.approachTime2 || d.approachTime;
+            const progress2 = Math.min(1, Math.max(0, 1 - timeToHit / approachTime2));
+            const scale2 = 1.8 - progress2 * 0.8;
+            
             ctx.beginPath();
-            ctx.arc(d.x2, d.y2, d.radius * scale, 0, Math.PI * 2);
+            ctx.arc(d.x2, d.y2, d.radius * scale2, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255, 180, 220, ${isTapped2 ? 0.3 : alpha})`;
             ctx.lineWidth = 3;
             ctx.stroke();
@@ -856,6 +873,7 @@
             ctx.fillStyle = isTapped2 ? `rgba(100, 200, 100, ${alpha})` : `rgba(100, 150, 200, ${alpha})`;
             ctx.fill();
             
+            // Labels
             ctx.fillStyle = `rgba(255,255,255,${alpha})`;
             ctx.font = `bold ${d.radius - 4}px Arial`;
             ctx.textAlign = "center";
