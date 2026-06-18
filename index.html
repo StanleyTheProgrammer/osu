@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Music Storage (IndexedDB)</title>
+    <title>osu! · Rhythm Game + Music Storage</title>
     <style>
         * {
             user-select: none;
@@ -49,7 +49,7 @@
 
         .controls {
             display: flex;
-            gap: 6px;
+            gap: 8px;
             flex-wrap: wrap;
             padding: 8px 10px;
             background: rgba(0,0,0,0.6);
@@ -63,8 +63,8 @@
             border: none;
             font-family: inherit;
             font-weight: bold;
-            font-size: 0.7rem;
-            padding: 4px 12px;
+            font-size: 0.75rem;
+            padding: 5px 14px;
             border-radius: 40px;
             color: #eff3ff;
             cursor: pointer;
@@ -94,8 +94,8 @@
         .controls button.diff-btn {
             background: #1e2438;
             color: #cbd5ff;
-            font-size: 0.65rem;
-            padding: 3px 8px;
+            font-size: 0.7rem;
+            padding: 4px 10px;
         }
 
         .controls button.diff-btn.active {
@@ -106,7 +106,7 @@
 
         .controls label {
             color: #aab3cf;
-            font-size: 0.6rem;
+            font-size: 0.65rem;
             font-weight: bold;
         }
 
@@ -114,28 +114,23 @@
             background: #1e2438;
             border: 1px solid #4a4a6a;
             border-radius: 40px;
-            padding: 2px 8px;
+            padding: 3px 10px;
             color: #f0e6ff;
             font-family: inherit;
-            font-size: 0.65rem;
+            font-size: 0.7rem;
             outline: none;
-            min-width: 80px;
+            min-width: 100px;
         }
 
         .controls input:focus {
             border-color: #ff66aa;
         }
 
-        .controls input[type="file"] {
-            min-width: 100px;
-            padding: 2px 6px;
-        }
-
         .status-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             padding: 4px 12px;
             background: rgba(0,0,0,0.4);
             border-radius: 12px;
@@ -145,7 +140,7 @@
 
         .status-bar span {
             color: #aab3cf;
-            font-size: 0.6rem;
+            font-size: 0.65rem;
             font-family: monospace;
         }
 
@@ -280,7 +275,7 @@
         .quiz-container {
             background: linear-gradient(135deg, #1e1b2e, #141121);
             border-radius: 48px;
-            padding: 25px 20px;
+            padding: 30px 25px;
             max-width: 500px;
             width: 90%;
             border: 2px solid #ff88cc;
@@ -288,7 +283,7 @@
         }
 
         .quiz-question {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: 800;
             color: #ffd966;
             margin-bottom: 20px;
@@ -305,13 +300,13 @@
         .quiz-opt {
             background: #2a2342;
             border: 2px solid #5a4a8a;
-            padding: 12px 18px;
+            padding: 14px 20px;
             border-radius: 60px;
             color: #f0e6ff;
             font-weight: bold;
             cursor: pointer;
             text-align: center;
-            font-size: 0.95rem;
+            font-size: 1rem;
             transition: all 0.2s;
             -webkit-tap-highlight-color: transparent;
         }
@@ -323,15 +318,14 @@
 
         .progress-badge {
             text-align: center;
-            font-size: 0.9rem;
+            font-size: 1rem;
             margin-bottom: 15px;
             color: #ffaa88;
             font-weight: bold;
         }
 
-        .file-size {
-            color: #88aaff;
-            font-size: 0.6rem;
+        .file-input-hidden {
+            display: none;
         }
 
         .music-status {
@@ -339,24 +333,15 @@
             font-weight: bold;
         }
 
-        .music-status.loading {
-            color: #ffaa44;
-        }
-
-        .music-status.error {
-            color: #ff6666;
-        }
-
         @media (max-width: 768px) {
             body { padding: 5px; }
             .floating-judgement { font-size: 1.2rem; }
             .death-title { font-size: 2rem; }
             .controls { gap: 4px; }
-            .controls button { font-size: 0.55rem; padding: 3px 8px; }
-            .controls input { font-size: 0.55rem; padding: 2px 6px; min-width: 60px; }
-            .controls input[type="file"] { min-width: 80px; }
-            .quiz-container { padding: 15px; }
-            .quiz-question { font-size: 1rem; }
+            .controls button { font-size: 0.6rem; padding: 3px 10px; }
+            .controls input { font-size: 0.6rem; padding: 2px 8px; min-width: 80px; }
+            .quiz-container { padding: 20px 15px; }
+            .quiz-question { font-size: 1.1rem; }
         }
     </style>
 </head>
@@ -369,9 +354,9 @@
     <canvas id="gameCanvas" width="800" height="500"></canvas>
     
     <div class="controls">
-        <button class="primary" id="playBtn">PLAY</button>
-        <button id="resetBtn">RESTART</button>
-        <button id="clearMusicBtn" class="danger">CLEAR</button>
+        <button class="primary" id="playBtn">▶ PLAY</button>
+        <button id="resetBtn">🔄 RESTART</button>
+        <button id="clearMusicBtn" class="danger">🗑 CLEAR MUSIC</button>
         
         <span style="color:#666;font-size:0.6rem;">|</span>
         
@@ -382,9 +367,8 @@
         
         <span style="color:#666;font-size:0.6rem;">|</span>
         
-        <label>MUSIC</label>
-        <input type="file" id="musicFileInput" accept="audio/*">
-        <span id="fileSizeDisplay" class="file-size"></span>
+        <label>UPLOAD MUSIC</label>
+        <input type="file" id="musicFileInput" accept="audio/*" style="width:120px;padding:2px 8px;font-size:0.6rem;">
     </div>
     
     <div class="status-bar">
@@ -397,7 +381,7 @@
 
 <script>
     // ============================================
-    // OSU! GAME + INDEXEDDB MUSIC STORAGE
+    // OSU! GAME + MUSIC SAVED IN LOCALSTORAGE
     // ============================================
     
     const DEFAULT_QUESTIONS = [
@@ -417,9 +401,6 @@
     const BASE_SCORE = 250;
     const DOUBLE_SCORE = 400;
     const GAME_DURATION = 30000;
-    const DB_NAME = 'osuMusicDB';
-    const STORE_NAME = 'musicStore';
-    const MUSIC_KEY = 'savedMusic';
     
     let canvas, ctx;
     let activeCircles = [];
@@ -437,7 +418,7 @@
     let audioBuffer = null;
     let audioSource = null;
     let musicName = 'No Music';
-    let musicFileSize = 0;
+    let savedMusicData = null;
     
     let quizActive = true, gameLocked = true;
     let questionBank = [];
@@ -449,81 +430,79 @@
     ctx = canvasElem.getContext('2d');
     
     // ============================================
-    // INDEXEDDB MUSIC STORAGE (Large files supported)
+    // LOCALSTORAGE MUSIC SAVE/LOAD
     // ============================================
+    const MUSIC_STORAGE_KEY = 'osuSavedMusic';
     
-    function openDB() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, 1);
-            request.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    db.createObjectStore(STORE_NAME);
-                }
+    function saveMusicToStorage(name, data) {
+        try {
+            const musicData = {
+                name: name,
+                data: data,
+                savedAt: Date.now()
             };
-            request.onsuccess = (e) => resolve(e.target.result);
-            request.onerror = (e) => reject(e.target.error);
-        });
-    }
-    
-    function saveMusicToDB(name, data, size) {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const db = await openDB();
-                const tx = db.transaction(STORE_NAME, 'readwrite');
-                const store = tx.objectStore(STORE_NAME);
-                
-                const musicData = {
-                    name: name,
-                    data: data,
-                    size: size,
-                    savedAt: Date.now()
-                };
-                
-                const request = store.put(musicData, MUSIC_KEY);
-                request.onsuccess = () => resolve(true);
-                request.onerror = () => reject(request.error);
-            } catch (e) {
-                reject(e);
+            localStorage.setItem(MUSIC_STORAGE_KEY, JSON.stringify(musicData));
+            console.log('🎵 Music saved to localStorage');
+            return true;
+        } catch (e) {
+            console.error('Failed to save music:', e);
+            // If storage is full (file too large), show error
+            if (e.name === 'QuotaExceededError') {
+                alert('⚠️ Music file too large for localStorage. Try a smaller file (under 10MB).');
             }
-        });
+            return false;
+        }
     }
     
-    function loadMusicFromDB() {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const db = await openDB();
-                const tx = db.transaction(STORE_NAME, 'readonly');
-                const store = tx.objectStore(STORE_NAME);
-                const request = store.get(MUSIC_KEY);
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-            } catch (e) {
-                reject(e);
+    function loadMusicFromStorage() {
+        try {
+            const stored = localStorage.getItem(MUSIC_STORAGE_KEY);
+            if (!stored) return null;
+            const musicData = JSON.parse(stored);
+            return musicData;
+        } catch (e) {
+            console.error('Failed to load music:', e);
+            return null;
+        }
+    }
+    
+    function clearMusicFromStorage() {
+        localStorage.removeItem(MUSIC_STORAGE_KEY);
+        console.log('🗑 Music cleared from localStorage');
+        document.getElementById('musicStatus').innerHTML = 'NO MUSIC';
+        document.getElementById('musicStatus').style.color = '#ff6666';
+        musicName = 'No Music';
+        audioBuffer = null;
+        savedMusicData = null;
+    }
+    
+    async function loadSavedMusic() {
+        const stored = loadMusicFromStorage();
+        if (!stored) return false;
+        
+        try {
+            // Decode base64 audio data
+            const binaryString = atob(stored.data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
             }
-        });
-    }
-    
-    function clearMusicFromDB() {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const db = await openDB();
-                const tx = db.transaction(STORE_NAME, 'readwrite');
-                const store = tx.objectStore(STORE_NAME);
-                const request = store.delete(MUSIC_KEY);
-                request.onsuccess = () => resolve(true);
-                request.onerror = () => reject(request.error);
-            } catch (e) {
-                reject(e);
-            }
-        });
-    }
-    
-    function formatFileSize(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-        if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
-        return (bytes / 1073741824).toFixed(1) + ' GB';
+            const arrayBuffer = bytes.buffer;
+            
+            const ctx = initAudio();
+            audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+            musicName = stored.name;
+            savedMusicData = stored;
+            
+            document.getElementById('musicStatus').innerHTML = '💾 ' + musicName;
+            document.getElementById('musicStatus').style.color = '#88ff88';
+            document.getElementById('gameStatus').innerHTML = 'MUSIC LOADED FROM STORAGE';
+            return true;
+        } catch (err) {
+            console.error('Error loading saved music:', err);
+            clearMusicFromStorage();
+            return false;
+        }
     }
     
     // ============================================
@@ -536,106 +515,55 @@
         return audioContext;
     }
     
-    async function loadMusicFile(file) {
-        const statusEl = document.getElementById('musicStatus');
-        statusEl.className = 'music-status loading';
-        statusEl.innerHTML = '⏳ LOADING...';
-        
-        try {
-            const arrayBuffer = await file.arrayBuffer();
-            const ctx = initAudio();
-            audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-            
-            // Save to IndexedDB
-            const dataArray = new Uint8Array(arrayBuffer);
-            await saveMusicToDB(file.name, dataArray, arrayBuffer.byteLength);
-            
-            musicName = file.name;
-            musicFileSize = arrayBuffer.byteLength;
-            
-            document.getElementById('fileSizeDisplay').innerHTML = formatFileSize(musicFileSize);
-            statusEl.className = 'music-status';
-            statusEl.innerHTML = '💾 ' + musicName;
-            document.getElementById('gameStatus').innerHTML = 'MUSIC SAVED (IndexedDB)';
-            
-            console.log('🎵 Music saved to IndexedDB:', musicName, formatFileSize(musicFileSize));
-        } catch (err) {
-            console.error('Error loading music:', err);
-            statusEl.className = 'music-status error';
-            statusEl.innerHTML = '❌ ERROR';
-            document.getElementById('gameStatus').innerHTML = 'ERROR: ' + err.message;
-        }
-    }
-    
-    async function loadSavedMusic() {
-        const statusEl = document.getElementById('musicStatus');
-        statusEl.className = 'music-status loading';
-        statusEl.innerHTML = '⏳ LOADING...';
-        
-        try {
-            const stored = await loadMusicFromDB();
-            if (!stored) {
-                statusEl.className = 'music-status';
-                statusEl.innerHTML = 'NO MUSIC';
-                return false;
+    function loadMusicFile(file) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const ctx = initAudio();
+                const arrayBuffer = e.target.result;
+                audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+                
+                // Save to localStorage (convert to base64)
+                const bytes = new Uint8Array(arrayBuffer);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                const base64Data = btoa(binary);
+                
+                const saved = saveMusicToStorage(file.name, base64Data);
+                if (saved) {
+                    musicName = file.name;
+                    savedMusicData = { name: file.name, data: base64Data };
+                    document.getElementById('musicStatus').innerHTML = '💾 ' + musicName;
+                    document.getElementById('musicStatus').style.color = '#88ff88';
+                    document.getElementById('gameStatus').innerHTML = 'MUSIC SAVED';
+                }
+            } catch (err) {
+                console.error('Error loading music:', err);
+                document.getElementById('musicStatus').innerHTML = '❌ ERROR';
+                document.getElementById('musicStatus').style.color = '#ff6666';
             }
-            
-            const ctx = initAudio();
-            const arrayBuffer = stored.data.buffer;
-            audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-            musicName = stored.name;
-            musicFileSize = stored.size || 0;
-            
-            document.getElementById('fileSizeDisplay').innerHTML = formatFileSize(musicFileSize);
-            statusEl.className = 'music-status';
-            statusEl.innerHTML = '💾 ' + musicName;
-            document.getElementById('gameStatus').innerHTML = 'MUSIC LOADED FROM STORAGE';
-            
-            console.log('🎵 Music loaded from IndexedDB:', musicName, formatFileSize(musicFileSize));
-            return true;
-        } catch (err) {
-            console.error('Error loading saved music:', err);
-            statusEl.className = 'music-status error';
-            statusEl.innerHTML = '❌ CORRUPT';
-            await clearMusicFromDB();
-            return false;
-        }
-    }
-    
-    async function clearMusic() {
-        try {
-            await clearMusicFromDB();
-            audioBuffer = null;
-            musicName = 'No Music';
-            musicFileSize = 0;
-            document.getElementById('fileSizeDisplay').innerHTML = '';
-            const statusEl = document.getElementById('musicStatus');
-            statusEl.className = 'music-status';
-            statusEl.innerHTML = 'NO MUSIC';
-            document.getElementById('gameStatus').innerHTML = 'MUSIC CLEARED';
-            console.log('🗑 Music cleared from IndexedDB');
-        } catch (e) {
-            console.error('Error clearing music:', e);
-        }
+        };
+        reader.readAsArrayBuffer(file);
     }
     
     function playMusic() {
-        if (!audioBuffer) {
-            document.getElementById('gameStatus').innerHTML = '⚠️ NO MUSIC';
-            return;
-        }
+        if (!audioBuffer) return;
         try {
             const ctx = initAudio();
             if (audioSource) {
-                try { audioSource.stop(); audioSource.disconnect(); } catch(e) {}
+                try {
+                    audioSource.stop();
+                    audioSource.disconnect();
+                } catch(e) {}
             }
             audioSource = ctx.createBufferSource();
             audioSource.buffer = audioBuffer;
             audioSource.connect(ctx.destination);
             audioSource.start(0);
-            const statusEl = document.getElementById('musicStatus');
-            statusEl.className = 'music-status';
-            statusEl.innerHTML = '▶ ' + musicName;
+            document.getElementById('musicStatus').innerHTML = '▶ ' + musicName;
+            document.getElementById('musicStatus').style.color = '#ffcc66';
         } catch (err) {
             console.error('Error playing music:', err);
         }
@@ -643,13 +571,15 @@
     
     function stopMusic() {
         if (audioSource) {
-            try { audioSource.stop(); audioSource.disconnect(); } catch(e) {}
+            try {
+                audioSource.stop();
+                audioSource.disconnect();
+            } catch(e) {}
             audioSource = null;
         }
         if (musicName !== 'No Music') {
-            const statusEl = document.getElementById('musicStatus');
-            statusEl.className = 'music-status';
-            statusEl.innerHTML = '⏸ ' + musicName;
+            document.getElementById('musicStatus').innerHTML = '⏸ ' + musicName;
+            document.getElementById('musicStatus').style.color = '#88ff88';
         }
     }
     
@@ -1125,17 +1055,16 @@
         draw();
     };
     
-    document.getElementById('clearMusicBtn').onclick = async () => {
-        if (confirm('Clear saved music from storage?')) {
-            await clearMusic();
+    document.getElementById('clearMusicBtn').onclick = () => {
+        if (confirm('Clear saved music from localStorage?')) {
+            clearMusicFromStorage();
+            document.getElementById('gameStatus').innerHTML = 'MUSIC CLEARED';
         }
     };
     
     document.getElementById('musicFileInput').onchange = (e) => {
         if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            document.getElementById('fileSizeDisplay').innerHTML = formatFileSize(file.size) + ' (uploading...)';
-            loadMusicFile(file);
+            loadMusicFile(e.target.files[0]);
             document.getElementById('gameStatus').innerHTML = 'MUSIC UPLOADED & SAVED';
         }
     };
@@ -1211,8 +1140,10 @@
     
     document.getElementById('gameStatus').innerHTML = 'Loading...';
     
-    // Try to load saved music from IndexedDB
-    loadSavedMusic();
+    // Try to load saved music first
+    loadSavedMusic().then(() => {
+        console.log('Music loaded from storage');
+    });
     
     loadQuestions().then(() => {
         document.getElementById('gameStatus').innerHTML = 'Answer 3 questions';
