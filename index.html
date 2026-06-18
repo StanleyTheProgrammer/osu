@@ -416,9 +416,6 @@
     const STORE_NAME = 'musicStore';
     const MUSIC_KEY = 'savedMusic';
     
-    // DOUBLE NOTE: second circle shrinks slower (2x slower)
-    const DOUBLE_SECOND_SCALE = 2.0;
-    
     let canvas, ctx;
     let activeCircles = [];
     let activeDoubles = [];
@@ -705,10 +702,7 @@
                 x2: clamp(x2, margin2, canvasElem.width - margin2),
                 y2: clamp(y2, margin2, canvasElem.height - margin2),
                 radius: diff.radius - 2,
-                // First circle uses normal approach time
-                approachTime1: diff.approachTime,
-                // Second circle uses SLOWER approach time (2x slower)
-                approachTime2: diff.approachTime * DOUBLE_SECOND_SCALE,
+                approachTime: diff.approachTime,
                 hit: false,
                 tapped: 0,
                 id: Math.random()
@@ -760,7 +754,7 @@
             const elapsed = now - gameStartTime;
             
             if (gameActive && !deathTriggered) {
-                while (nextNoteIndex < allNotes.length && elapsed >= allNotes[nextNoteIndex].time - allNotes[nextNoteIndex].approachTime1) {
+                while (nextNoteIndex < allNotes.length && elapsed >= allNotes[nextNoteIndex].time - allNotes[nextNoteIndex].approachTime) {
                     const note = allNotes[nextNoteIndex];
                     if (note.type === 'circle') {
                         activeCircles.push({...note});
@@ -785,12 +779,7 @@
                 
                 for (let i = 0; i < activeDoubles.length; i++) {
                     const note = activeDoubles[i];
-                    // If circle 1 is tapped, use slower miss time for circle 2
-                    const missTime = note.tapped >= 1 ? 
-                        note.time + note.approachTime2 + 50 : 
-                        note.time + timingOk + 50;
-                    
-                    if (!note.hit && elapsed > missTime) {
+                    if (!note.hit && elapsed > note.time + timingOk + 50) {
                         note.hit = true;
                         combo = 0;
                         misses++;
@@ -827,7 +816,7 @@
         
         for (const d of activeDoubles) {
             const timeToHit = d.time - elapsed;
-            const alpha = Math.min(1, Math.max(0.3, 1 - (d.approachTime1 - timeToHit) / d.approachTime1 * 0.5));
+            const alpha = Math.min(1, Math.max(0.3, 1 - (d.approachTime - timeToHit) / d.approachTime * 0.5));
             
             ctx.beginPath();
             ctx.moveTo(d.x1, d.y1);
@@ -838,14 +827,13 @@
             ctx.stroke();
             ctx.setLineDash([]);
             
+            const progress = Math.min(1, Math.max(0, 1 - timeToHit / d.approachTime));
+            const scale = 1.8 - progress * 0.8;
+            
             const isTapped1 = d.tapped >= 1;
             
-            // Circle 1 - normal speed (approachTime1)
-            const progress1 = Math.min(1, Math.max(0, 1 - timeToHit / d.approachTime1));
-            const scale1 = 1.8 - progress1 * 0.8;
-            
             ctx.beginPath();
-            ctx.arc(d.x1, d.y1, d.radius * scale1, 0, Math.PI * 2);
+            ctx.arc(d.x1, d.y1, d.radius * scale, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255, 180, 220, ${isTapped1 ? 0.3 : alpha})`;
             ctx.lineWidth = 3;
             ctx.stroke();
@@ -855,13 +843,10 @@
             ctx.fillStyle = isTapped1 ? `rgba(100, 200, 100, ${alpha})` : `rgba(255, 100, 160, ${alpha})`;
             ctx.fill();
             
-            // Circle 2 - SLOWER speed (approachTime2 - 2x slower)
             const isTapped2 = d.tapped >= 2;
-            const progress2 = Math.min(1, Math.max(0, 1 - timeToHit / d.approachTime2));
-            const scale2 = 1.8 - progress2 * 0.8;
             
             ctx.beginPath();
-            ctx.arc(d.x2, d.y2, d.radius * scale2, 0, Math.PI * 2);
+            ctx.arc(d.x2, d.y2, d.radius * scale, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255, 180, 220, ${isTapped2 ? 0.3 : alpha})`;
             ctx.lineWidth = 3;
             ctx.stroke();
@@ -871,7 +856,6 @@
             ctx.fillStyle = isTapped2 ? `rgba(100, 200, 100, ${alpha})` : `rgba(100, 150, 200, ${alpha})`;
             ctx.fill();
             
-            // Labels
             ctx.fillStyle = `rgba(255,255,255,${alpha})`;
             ctx.font = `bold ${d.radius - 4}px Arial`;
             ctx.textAlign = "center";
