@@ -711,9 +711,9 @@
                 y2: y2,
                 radius: diff.radius - 2,
                 // CIRCLE 1 (first note): normal speed
-                approachTime: diff.approachTime,
+                approachTime: diff.approachTime * DOUBLE_SECOND_SCALE,
                 // CIRCLE 2 (second note): 1.5x slower
-                approachTime2: diff.approachTime * DOUBLE_SECOND_SCALE,
+                approachTime2: diff.approachTime,
                 hit: false,
                 tapped: 0,
                 tap1Time: 0,
