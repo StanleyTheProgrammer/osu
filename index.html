@@ -416,6 +416,9 @@
     const STORE_NAME = 'musicStore';
     const MUSIC_KEY = 'savedMusic';
     
+    // DOUBLE NOTE: second circle shrinks 1.5x slower
+    const DOUBLE_SECOND_SCALE = 1.5;
+    
     let canvas, ctx;
     let activeCircles = [];
     let activeDoubles = [];
@@ -656,6 +659,7 @@
         const startOffset = 1500;
         const endTime = GAME_DURATION;
         
+        // Generate single circles
         for (let i = 0; i < diff.circleCount; i++) {
             let t = startOffset + (i / diff.circleCount) * (endTime - startOffset - 500);
             t += (Math.random() - 0.5) * 40;
@@ -667,7 +671,8 @@
             notes.push({
                 type: 'circle',
                 time: t,
-                x: x, y: y,
+                x: x,
+                y: y,
                 radius: diff.radius,
                 approachTime: diff.approachTime,
                 hit: false,
@@ -675,6 +680,7 @@
             });
         }
         
+        // Generate double notes
         for (let i = 0; i < diff.doubleCount; i++) {
             let t = startOffset + 800 + (i / diff.doubleCount) * (endTime - startOffset - 1000);
             t += (Math.random() - 0.5) * 50;
@@ -683,33 +689,41 @@
             const centerX = margin + Math.random() * (canvasElem.width - margin * 2);
             const centerY = margin + Math.random() * (canvasElem.height - margin * 2);
             
-            const offset = diff.radius * 1.5;
+            const offset = diff.radius * 1.8;
             const angle = Math.random() * Math.PI * 2;
             
-            const x1 = centerX + Math.cos(angle) * offset;
-            const y1 = centerY + Math.sin(angle) * offset;
-            const x2 = centerX + Math.cos(angle + Math.PI) * offset;
-            const y2 = centerY + Math.sin(angle + Math.PI) * offset;
+            let x1 = centerX + Math.cos(angle) * offset;
+            let y1 = centerY + Math.sin(angle) * offset;
+            let x2 = centerX + Math.cos(angle + Math.PI) * offset;
+            let y2 = centerY + Math.sin(angle + Math.PI) * offset;
             
             const margin2 = 80;
-            const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+            x1 = Math.min(canvasElem.width - margin2, Math.max(margin2, x1));
+            y1 = Math.min(canvasElem.height - margin2, Math.max(margin2, y1));
+            x2 = Math.min(canvasElem.width - margin2, Math.max(margin2, x2));
+            y2 = Math.min(canvasElem.height - margin2, Math.max(margin2, y2));
             
             notes.push({
                 type: 'double',
                 time: t,
-                x1: clamp(x1, margin2, canvasElem.width - margin2),
-                y1: clamp(y1, margin2, canvasElem.height - margin2),
-                x2: clamp(x2, margin2, canvasElem.width - margin2),
-                y2: clamp(y2, margin2, canvasElem.height - margin2),
+                x1: x1,
+                y1: y1,
+                x2: x2,
+                y2: y2,
                 radius: diff.radius - 2,
                 approachTime: diff.approachTime,
+                approachTime2: diff.approachTime * DOUBLE_SECOND_SCALE,
                 hit: false,
                 tapped: 0,
+                // Track timing for judgement
+                tap1Time: 0,
+                tap2Time: 0,
                 id: Math.random()
             });
         }
         
-        notes.sort((a,b) => a.time - b.time);
+        // Sort by time
+        notes.sort((a, b) => a.time - b.time);
         return notes;
     }
     
@@ -728,9 +742,11 @@
         allNotes.sort((a,b) => a.time - b.time);
         
         if (allNotes.length === 0) {
-            document.getElementById('gameStatus').innerHTML = 'ERROR: No notes';
+            document.getElementById('gameStatus').innerHTML = 'ERROR: No notes generated';
             return;
         }
+        
+        console.log('Generated ' + allNotes.length + ' notes');
         
         gameStarted = true;
         gameActive = true;
@@ -754,6 +770,7 @@
             const elapsed = now - gameStartTime;
             
             if (gameActive && !deathTriggered) {
+                // Spawn notes
                 while (nextNoteIndex < allNotes.length && elapsed >= allNotes[nextNoteIndex].time - allNotes[nextNoteIndex].approachTime) {
                     const note = allNotes[nextNoteIndex];
                     if (note.type === 'circle') {
@@ -766,6 +783,7 @@
                 
                 const timingOk = TIMING.ok * difficulties[currentDifficulty].timingWindow;
                 
+                // Check single circle misses
                 for (let i = 0; i < activeCircles.length; i++) {
                     const note = activeCircles[i];
                     if (!note.hit && elapsed > note.time + timingOk + 50) {
@@ -777,9 +795,17 @@
                 }
                 activeCircles = activeCircles.filter(n => !n.hit);
                 
+                // Check double note misses
                 for (let i = 0; i < activeDoubles.length; i++) {
                     const note = activeDoubles[i];
-                    if (!note.hit && elapsed > note.time + timingOk + 50) {
+                    if (note.hit) continue;
+                    
+                    // If first circle is tapped, use slower miss time for second circle
+                    const missTime = note.tapped >= 1 ? 
+                        note.time + note.approachTime2 + 50 : 
+                        note.time + timingOk + 50;
+                    
+                    if (elapsed > missTime) {
                         note.hit = true;
                         combo = 0;
                         misses++;
@@ -814,10 +840,12 @@
         const now = performance.now();
         const elapsed = now - gameStartTime;
         
+        // Draw double notes
         for (const d of activeDoubles) {
             const timeToHit = d.time - elapsed;
             const alpha = Math.min(1, Math.max(0.3, 1 - (d.approachTime - timeToHit) / d.approachTime * 0.5));
             
+            // Connecting line
             ctx.beginPath();
             ctx.moveTo(d.x1, d.y1);
             ctx.lineTo(d.x2, d.y2);
@@ -827,13 +855,14 @@
             ctx.stroke();
             ctx.setLineDash([]);
             
-            const progress = Math.min(1, Math.max(0, 1 - timeToHit / d.approachTime));
-            const scale = 1.8 - progress * 0.8;
-            
             const isTapped1 = d.tapped >= 1;
             
+            // Circle 1 - normal speed (approachTime)
+            const progress1 = Math.min(1, Math.max(0, 1 - timeToHit / d.approachTime));
+            const scale1 = 1.8 - progress1 * 0.8;
+            
             ctx.beginPath();
-            ctx.arc(d.x1, d.y1, d.radius * scale, 0, Math.PI * 2);
+            ctx.arc(d.x1, d.y1, d.radius * scale1, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255, 180, 220, ${isTapped1 ? 0.3 : alpha})`;
             ctx.lineWidth = 3;
             ctx.stroke();
@@ -843,10 +872,13 @@
             ctx.fillStyle = isTapped1 ? `rgba(100, 200, 100, ${alpha})` : `rgba(255, 100, 160, ${alpha})`;
             ctx.fill();
             
+            // Circle 2 - SLOWER speed (approachTime2 = 1.5x slower)
             const isTapped2 = d.tapped >= 2;
+            const progress2 = Math.min(1, Math.max(0, 1 - timeToHit / d.approachTime2));
+            const scale2 = 1.8 - progress2 * 0.8;
             
             ctx.beginPath();
-            ctx.arc(d.x2, d.y2, d.radius * scale, 0, Math.PI * 2);
+            ctx.arc(d.x2, d.y2, d.radius * scale2, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255, 180, 220, ${isTapped2 ? 0.3 : alpha})`;
             ctx.lineWidth = 3;
             ctx.stroke();
@@ -856,6 +888,7 @@
             ctx.fillStyle = isTapped2 ? `rgba(100, 200, 100, ${alpha})` : `rgba(100, 150, 200, ${alpha})`;
             ctx.fill();
             
+            // Labels
             ctx.fillStyle = `rgba(255,255,255,${alpha})`;
             ctx.font = `bold ${d.radius - 4}px Arial`;
             ctx.textAlign = "center";
@@ -864,6 +897,7 @@
             if (!isTapped2) ctx.fillText("2", d.x2, d.y2 + 1);
         }
         
+        // Draw single circles
         for (const c of activeCircles) {
             const timeToHit = c.time - elapsed;
             let scale = 1.0;
@@ -891,6 +925,7 @@
             ctx.fill();
         }
         
+        // Combo display
         if (combo >= 5 && gameStarted && gameActive && !deathTriggered) {
             ctx.font = `bold 32px "Courier New"`;
             ctx.fillStyle = "#ffcc66";
@@ -901,6 +936,7 @@
             ctx.shadowBlur = 0;
         }
         
+        // Progress bar
         const prog = Math.min(1, Math.max(0, elapsed / GAME_DURATION));
         ctx.fillStyle = "#ff66aa30";
         ctx.fillRect(20, canvasElem.height - 20, canvasElem.width - 40, 6);
@@ -924,6 +960,25 @@
     }
     
     // ============================================
+    // JUDGEMENT HELPER
+    // ============================================
+    function getJudgement(timeDiff, scale) {
+        const perfect = TIMING.perfect * scale;
+        const good = TIMING.good * scale;
+        const ok = TIMING.ok * scale;
+        
+        if (timeDiff <= perfect) {
+            return { points: BASE_SCORE, judgement: "PERFECT", color: "#ffd700" };
+        } else if (timeDiff <= good) {
+            return { points: Math.floor(BASE_SCORE * 0.85), judgement: "GOOD", color: "#88ff88" };
+        } else if (timeDiff <= ok) {
+            return { points: Math.floor(BASE_SCORE * 0.6), judgement: "OK", color: "#88aaff" };
+        } else {
+            return { points: Math.floor(BASE_SCORE * 0.3), judgement: "HIT", color: "#ffaa88" };
+        }
+    }
+    
+    // ============================================
     // GAME TAP HANDLER
     // ============================================
     function handleTap(clientX, clientY) {
@@ -932,6 +987,7 @@
         const {x, y} = getCanvasCoords(clientX, clientY);
         const elapsed = performance.now() - gameStartTime;
         
+        // Check single circles
         for (let i = 0; i < activeCircles.length; i++) {
             const c = activeCircles[i];
             const dx = c.x - x;
@@ -939,37 +995,20 @@
             if (Math.hypot(dx, dy) <= c.radius * 1.5) {
                 const timeDiff = Math.abs(elapsed - c.time);
                 const scale = difficulties[currentDifficulty].timingWindow;
+                const result = getJudgement(timeDiff, scale);
                 
-                let points, judgement, color;
-                if (timeDiff <= TIMING.perfect * scale) {
-                    points = BASE_SCORE;
-                    judgement = "PERFECT";
-                    color = "#ffd700";
-                } else if (timeDiff <= TIMING.good * scale) {
-                    points = Math.floor(BASE_SCORE * 0.85);
-                    judgement = "GOOD";
-                    color = "#88ff88";
-                } else if (timeDiff <= TIMING.ok * scale) {
-                    points = Math.floor(BASE_SCORE * 0.6);
-                    judgement = "OK";
-                    color = "#88aaff";
-                } else {
-                    points = Math.floor(BASE_SCORE * 0.3);
-                    judgement = "HIT";
-                    color = "#ffaa88";
-                }
-                
-                score += points + Math.floor(combo * 3);
+                score += result.points + Math.floor(combo * 3);
                 combo++;
                 if (combo > maxCombo) maxCombo = combo;
                 totalHits++;
                 c.hit = true;
                 updateUI();
-                showMessage(judgement, clientX, clientY, color);
+                showMessage(result.judgement, clientX, clientY, result.color);
                 return;
             }
         }
         
+        // Check double notes
         for (let i = 0; i < activeDoubles.length; i++) {
             const d = activeDoubles[i];
             if (d.hit) continue;
@@ -989,27 +1028,33 @@
             const tappedCircle1 = dist1 <= d.radius * 1.5;
             const tappedCircle2 = dist2 <= d.radius * 1.5;
             
+            // Tap circle 1 (first tap)
             if (tappedCircle1 && d.tapped === 0) {
                 d.tapped = 1;
-                showMessage("1", clientX, clientY, "#88ff88");
+                d.tap1Time = timeDiff;
+                const result = getJudgement(timeDiff, scale);
+                showMessage(result.judgement, clientX, clientY, result.color);
                 return;
-            } else if (tappedCircle1 && d.tapped === 1) {
-                return;
-            } else if (tappedCircle2 && d.tapped === 0) {
-                d.tapped = 1;
-                showMessage("1", clientX, clientY, "#88ff88");
-                return;
-            } else if (tappedCircle2 && d.tapped === 1) {
+            }
+            
+            // Tap circle 2 (second tap - COMPLETE the double)
+            if (tappedCircle2 && d.tapped === 1) {
                 d.tapped = 2;
+                d.tap2Time = timeDiff;
                 d.hit = true;
                 
-                const pointsEarned = DOUBLE_SCORE + Math.floor(combo * 4);
-                score += pointsEarned;
+                // Average the two tap times for overall judgement
+                const avgTimeDiff = (d.tap1Time + timeDiff) / 2;
+                const result = getJudgement(avgTimeDiff, scale);
+                
+                // Bonus points for double
+                const bonusPoints = DOUBLE_SCORE + Math.floor(combo * 4);
+                score += bonusPoints + result.points;
                 combo += 2;
                 if (combo > maxCombo) maxCombo = combo;
                 totalHits += 2;
                 updateUI();
-                showMessage("DOUBLE!", clientX, clientY, "#ff88ff");
+                showMessage("DOUBLE " + result.judgement, clientX, clientY, result.color);
                 
                 const index = activeDoubles.findIndex(dn => dn.id === d.id);
                 if (index !== -1) activeDoubles.splice(index, 1);
@@ -1017,6 +1062,7 @@
             }
         }
         
+        // Miss
         combo = 0;
         misses++;
         updateUI();
