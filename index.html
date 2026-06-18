@@ -416,7 +416,7 @@
     const STORE_NAME = 'musicStore';
     const MUSIC_KEY = 'savedMusic';
     
-    // DOUBLE NOTE: second circle shrinks 1.5x slower (ONLY the second note)
+    // SECOND NOTE is 1.5x slower
     const DOUBLE_SECOND_SCALE = 1.5;
     
     let canvas, ctx;
@@ -430,7 +430,6 @@
     let allNotes = [];
     let nextNoteIndex = 0;
     
-    // Audio
     let audioContext = null;
     let audioBuffer = null;
     let audioSource = null;
@@ -659,7 +658,7 @@
         const startOffset = 1500;
         const endTime = GAME_DURATION;
         
-        // Generate single circles
+        // Single circles
         for (let i = 0; i < diff.circleCount; i++) {
             let t = startOffset + (i / diff.circleCount) * (endTime - startOffset - 500);
             t += (Math.random() - 0.5) * 40;
@@ -680,7 +679,7 @@
             });
         }
         
-        // Generate double notes
+        // Double notes
         for (let i = 0; i < diff.doubleCount; i++) {
             let t = startOffset + 800 + (i / diff.doubleCount) * (endTime - startOffset - 1000);
             t += (Math.random() - 0.5) * 50;
@@ -723,7 +722,6 @@
             });
         }
         
-        // Sort by time
         notes.sort((a, b) => a.time - b.time);
         return notes;
     }
@@ -771,7 +769,7 @@
             const elapsed = now - gameStartTime;
             
             if (gameActive && !deathTriggered) {
-                // Spawn notes - use approachTime (normal speed for circle 1)
+                // Spawn notes - uses approachTime (normal speed)
                 while (nextNoteIndex < allNotes.length && elapsed >= allNotes[nextNoteIndex].time - allNotes[nextNoteIndex].approachTime) {
                     const note = allNotes[nextNoteIndex];
                     if (note.type === 'circle') {
@@ -784,7 +782,7 @@
                 
                 const timingOk = TIMING.ok * difficulties[currentDifficulty].timingWindow;
                 
-                // Check single circle misses
+                // Single circle misses
                 for (let i = 0; i < activeCircles.length; i++) {
                     const note = activeCircles[i];
                     if (!note.hit && elapsed > note.time + timingOk + 50) {
@@ -796,7 +794,7 @@
                 }
                 activeCircles = activeCircles.filter(n => !n.hit);
                 
-                // Check double note misses
+                // Double note misses
                 for (let i = 0; i < activeDoubles.length; i++) {
                     const note = activeDoubles[i];
                     if (note.hit) continue;
@@ -841,7 +839,7 @@
         const now = performance.now();
         const elapsed = now - gameStartTime;
         
-        // Draw double notes
+        // Double notes
         for (const d of activeDoubles) {
             const timeToHit = d.time - elapsed;
             const alpha = Math.min(1, Math.max(0.3, 1 - (d.approachTime - timeToHit) / d.approachTime * 0.5));
@@ -898,7 +896,7 @@
             if (!isTapped2) ctx.fillText("2", d.x2, d.y2 + 1);
         }
         
-        // Draw single circles
+        // Single circles
         for (const c of activeCircles) {
             const timeToHit = c.time - elapsed;
             let scale = 1.0;
@@ -926,7 +924,7 @@
             ctx.fill();
         }
         
-        // Combo display
+        // Combo
         if (combo >= 5 && gameStarted && gameActive && !deathTriggered) {
             ctx.font = `bold 32px "Courier New"`;
             ctx.fillStyle = "#ffcc66";
@@ -961,7 +959,7 @@
     }
     
     // ============================================
-    // JUDGEMENT HELPER
+    // JUDGEMENT
     // ============================================
     function getJudgement(timeDiff, scale) {
         const perfect = TIMING.perfect * scale;
@@ -980,7 +978,7 @@
     }
     
     // ============================================
-    // GAME TAP HANDLER
+    // TAP HANDLER
     // ============================================
     function handleTap(clientX, clientY) {
         if (!gameActive || gameLocked || quizActive || !gameStarted || deathTriggered) return;
@@ -988,7 +986,7 @@
         const {x, y} = getCanvasCoords(clientX, clientY);
         const elapsed = performance.now() - gameStartTime;
         
-        // Check single circles
+        // Single circles
         for (let i = 0; i < activeCircles.length; i++) {
             const c = activeCircles[i];
             const dx = c.x - x;
@@ -1009,7 +1007,7 @@
             }
         }
         
-        // Check double notes
+        // Double notes
         for (let i = 0; i < activeDoubles.length; i++) {
             const d = activeDoubles[i];
             if (d.hit) continue;
@@ -1029,7 +1027,7 @@
             const tappedCircle1 = dist1 <= d.radius * 1.5;
             const tappedCircle2 = dist2 <= d.radius * 1.5;
             
-            // Tap circle 1 (first tap) - normal judgement
+            // Tap circle 1 (first tap)
             if (tappedCircle1 && d.tapped === 0) {
                 d.tapped = 1;
                 d.tap1Time = timeDiff;
@@ -1038,17 +1036,16 @@
                 return;
             }
             
-            // Tap circle 2 (second tap - COMPLETE the double)
+            // Tap circle 2 (second tap - COMPLETE)
             if (tappedCircle2 && d.tapped === 1) {
                 d.tapped = 2;
                 d.tap2Time = timeDiff;
                 d.hit = true;
                 
-                // Average the two tap times for overall judgement
+                // Average timing
                 const avgTimeDiff = (d.tap1Time + timeDiff) / 2;
                 const result = getJudgement(avgTimeDiff, scale);
                 
-                // Bonus points for double
                 const bonusPoints = DOUBLE_SCORE + Math.floor(combo * 4);
                 score += bonusPoints + result.points;
                 combo += 2;
@@ -1118,7 +1115,7 @@
     }
     
     // ============================================
-    // DIFFICULTY BUTTON HANDLING
+    // DIFFICULTY BUTTONS
     // ============================================
     document.querySelectorAll('.diff-btn').forEach(btn => {
         btn.onclick = (e) => {
@@ -1182,7 +1179,7 @@
     };
     
     // ============================================
-    // QUIZ SYSTEM
+    // QUIZ
     // ============================================
     function showQuiz() {
         const shuffled = [...questionBank];
