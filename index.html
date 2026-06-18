@@ -280,6 +280,7 @@
             width: 90%;
             border: 2px solid #ff88cc;
             box-shadow: 0 0 40px rgba(255, 136, 204, 0.3);
+            position: relative;
         }
 
         .quiz-question {
@@ -316,6 +317,25 @@
             transform: scale(0.97);
         }
 
+        .quiz-skip-btn {
+            background: #ffaa44;
+            color: #1a1a2e;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            margin-top: 5px;
+        }
+
+        .quiz-skip-btn:active {
+            transform: scale(0.97);
+        }
+
         .progress-badge {
             text-align: center;
             font-size: 0.9rem;
@@ -342,6 +362,10 @@
             color: #ff6666;
         }
 
+        .music-status.optional {
+            color: #88aaff;
+        }
+
         @media (max-width: 768px) {
             body { padding: 5px; }
             .floating-judgement { font-size: 1.2rem; }
@@ -352,6 +376,7 @@
             .controls input[type="file"] { min-width: 80px; }
             .quiz-container { padding: 15px; }
             .quiz-question { font-size: 1rem; }
+            .quiz-skip-btn { font-size: 0.8rem; padding: 8px 16px; }
         }
     </style>
 </head>
@@ -385,7 +410,7 @@
     <div class="status-bar">
         <span id="scoreDisplay">SCORE: 0</span>
         <span id="comboDisplay">COMBO: 0</span>
-        <span id="musicStatus" class="music-status">NO MUSIC</span>
+        <span id="musicStatus" class="music-status optional">NO MUSIC (OPTIONAL)</span>
         <span id="gameStatus">READY</span>
     </div>
 </div>
@@ -536,7 +561,7 @@
     async function loadMusicFile(file) {
         const statusEl = document.getElementById('musicStatus');
         statusEl.className = 'music-status loading';
-        statusEl.innerHTML = '⏳ LOADING...';
+        statusEl.innerHTML = 'LOADING...';
         
         try {
             const arrayBuffer = await file.arrayBuffer();
@@ -551,14 +576,14 @@
             
             document.getElementById('fileSizeDisplay').innerHTML = formatFileSize(musicFileSize);
             statusEl.className = 'music-status';
-            statusEl.innerHTML = '💾 ' + musicName;
+            statusEl.innerHTML = 'STORED: ' + musicName;
             document.getElementById('gameStatus').innerHTML = 'MUSIC SAVED';
             
-            console.log('🎵 Music saved to IndexedDB:', musicName, formatFileSize(musicFileSize));
+            console.log('Music saved to IndexedDB:', musicName, formatFileSize(musicFileSize));
         } catch (err) {
             console.error('Error loading music:', err);
             statusEl.className = 'music-status error';
-            statusEl.innerHTML = '❌ ERROR';
+            statusEl.innerHTML = 'ERROR';
             document.getElementById('gameStatus').innerHTML = 'ERROR: ' + err.message;
         }
     }
@@ -566,13 +591,13 @@
     async function loadSavedMusic() {
         const statusEl = document.getElementById('musicStatus');
         statusEl.className = 'music-status loading';
-        statusEl.innerHTML = '⏳ LOADING...';
+        statusEl.innerHTML = 'LOADING...';
         
         try {
             const stored = await loadMusicFromDB();
             if (!stored) {
-                statusEl.className = 'music-status';
-                statusEl.innerHTML = 'NO MUSIC';
+                statusEl.className = 'music-status optional';
+                statusEl.innerHTML = 'NO MUSIC (OPTIONAL)';
                 return false;
             }
             
@@ -584,15 +609,15 @@
             
             document.getElementById('fileSizeDisplay').innerHTML = formatFileSize(musicFileSize);
             statusEl.className = 'music-status';
-            statusEl.innerHTML = '💾 ' + musicName;
+            statusEl.innerHTML = 'STORED: ' + musicName;
             document.getElementById('gameStatus').innerHTML = 'MUSIC LOADED FROM STORAGE';
             
-            console.log('🎵 Music loaded from IndexedDB:', musicName, formatFileSize(musicFileSize));
+            console.log('Music loaded from IndexedDB:', musicName, formatFileSize(musicFileSize));
             return true;
         } catch (err) {
             console.error('Error loading saved music:', err);
             statusEl.className = 'music-status error';
-            statusEl.innerHTML = '❌ CORRUPT';
+            statusEl.innerHTML = 'CORRUPT';
             await clearMusicFromDB();
             return false;
         }
@@ -606,10 +631,10 @@
             musicFileSize = 0;
             document.getElementById('fileSizeDisplay').innerHTML = '';
             const statusEl = document.getElementById('musicStatus');
-            statusEl.className = 'music-status';
-            statusEl.innerHTML = 'NO MUSIC';
+            statusEl.className = 'music-status optional';
+            statusEl.innerHTML = 'NO MUSIC (OPTIONAL)';
             document.getElementById('gameStatus').innerHTML = 'MUSIC CLEARED';
-            console.log('🗑 Music cleared from IndexedDB');
+            console.log('Music cleared from IndexedDB');
         } catch (e) {
             console.error('Error clearing music:', e);
         }
@@ -617,7 +642,7 @@
     
     function playMusic() {
         if (!audioBuffer) {
-            document.getElementById('gameStatus').innerHTML = '⚠️ NO MUSIC';
+            // Music is optional - just continue without it
             return;
         }
         try {
@@ -631,7 +656,7 @@
             audioSource.start(0);
             const statusEl = document.getElementById('musicStatus');
             statusEl.className = 'music-status';
-            statusEl.innerHTML = '▶ ' + musicName;
+            statusEl.innerHTML = 'PLAYING: ' + musicName;
         } catch (err) {
             console.error('Error playing music:', err);
         }
@@ -645,7 +670,7 @@
         if (musicName !== 'No Music') {
             const statusEl = document.getElementById('musicStatus');
             statusEl.className = 'music-status';
-            statusEl.innerHTML = '⏸ ' + musicName;
+            statusEl.innerHTML = 'PAUSED: ' + musicName;
         }
     }
     
@@ -711,9 +736,9 @@
                 y2: y2,
                 radius: diff.radius - 2,
                 // CIRCLE 1 (first note): normal speed
-                approachTime: diff.approachTime * DOUBLE_SECOND_SCALE,
+                approachTime: diff.approachTime,
                 // CIRCLE 2 (second note): 1.5x slower
-                approachTime2: diff.approachTime,
+                approachTime2: diff.approachTime * DOUBLE_SECOND_SCALE,
                 hit: false,
                 tapped: 0,
                 tap1Time: 0,
@@ -730,11 +755,7 @@
     // GAME PLAY
     // ============================================
     function startGame() {
-        if (!audioBuffer) {
-            document.getElementById('gameStatus').innerHTML = '⚠️ UPLOAD MUSIC FIRST';
-            return;
-        }
-        
+        // Music is optional - no need to check for audioBuffer
         stopMusic();
         
         allNotes = generateNotes();
@@ -815,7 +836,7 @@
                 
                 if (nextNoteIndex >= allNotes.length && activeCircles.length === 0 && activeDoubles.length === 0) {
                     gameActive = false;
-                    document.getElementById('gameStatus').innerHTML = '🎉 FINISHED!';
+                    document.getElementById('gameStatus').innerHTML = 'FINISHED!';
                     document.getElementById('playBtn').style.background = '#66cc88';
                     stopMusic();
                 }
@@ -931,7 +952,7 @@
             ctx.shadowBlur = 8;
             ctx.shadowColor = "#ff66aa";
             ctx.textAlign = "left";
-            ctx.fillText(`${combo}x`, canvasElem.width - 85, 65);
+            ctx.fillText(combo + 'x', canvasElem.width - 85, 65);
             ctx.shadowBlur = 0;
         }
         
@@ -945,7 +966,7 @@
         ctx.fillStyle = "#aab3cf";
         ctx.font = "14px monospace";
         ctx.textAlign = "left";
-        ctx.fillText(`SCORE: ${Math.floor(score)}`, 20, 30);
+        ctx.fillText('SCORE: ' + Math.floor(score), 20, 30);
     }
     
     function getCanvasCoords(clientX, clientY) {
@@ -1179,7 +1200,7 @@
     };
     
     // ============================================
-    // QUIZ
+    // QUIZ WITH SKIP BUTTON
     // ============================================
     function showQuiz() {
         const shuffled = [...questionBank];
@@ -1198,18 +1219,19 @@
                 overlay.remove();
                 quizActive = false;
                 gameLocked = false;
-                document.getElementById('gameStatus').innerHTML = 'READY - UPLOAD MUSIC & PLAY';
+                document.getElementById('gameStatus').innerHTML = 'READY - PRESS PLAY';
                 return;
             }
             const q = questions[qIndex];
             overlay.innerHTML = `
                 <div class="quiz-container">
-                    <div class="progress-badge">QUESTION ${qIndex+1}/3</div>
+                    <div class="progress-badge">QUESTION ' + (qIndex+1) + '/3</div>
                     <div class="progress-badge" style="color:#88ff88">INFINITE ATTEMPTS</div>
                     <div class="quiz-question">${q.question}</div>
                     <div class="quiz-options">
                         ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${opt}</div>`).join('')}
                     </div>
+                    <button class="quiz-skip-btn" id="quizSkipBtn">SKIP QUESTIONS</button>
                 </div>
             `;
             
@@ -1227,6 +1249,13 @@
                     }
                 };
             });
+            
+            document.getElementById('quizSkipBtn').onclick = () => {
+                overlay.remove();
+                quizActive = false;
+                gameLocked = false;
+                document.getElementById('gameStatus').innerHTML = 'READY - PRESS PLAY';
+            };
         }
         
         document.body.appendChild(overlay);
@@ -1252,7 +1281,7 @@
     loadSavedMusic();
     
     loadQuestions().then(() => {
-        document.getElementById('gameStatus').innerHTML = 'Answer 3 questions';
+        document.getElementById('gameStatus').innerHTML = 'Answer questions or skip';
         showQuiz();
     });
 </script>
