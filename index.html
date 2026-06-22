@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>osu! · Rhythm Game</title>
+    <title>Your average rhythm game</title>
     <style>
         * {
-            user-select: none;
+            user-select: none;u
             -webkit-tap-highlight-color: transparent;
             touch-action: none;
             -webkit-touch-callout: none;
@@ -389,37 +389,34 @@
     <canvas id="gameCanvas" width="800" height="500"></canvas>
     
     <div class="controls">
-        <button class="primary" id="playBtn">PLAY</button>
-        <button id="resetBtn">RESTART</button>
-        <button id="clearMusicBtn" class="danger">CLEAR</button>
+        <button class="primary" id="playBtn">Play</button>
+        <button id="resetBtn">Restart</button>
+        <button id="clearMusicBtn" class="danger">Clear</button>
         
         <span style="color:#666;font-size:0.6rem;">|</span>
         
-        <button class="diff-btn" data-diff="0">EASY</button>
-        <button class="diff-btn active" data-diff="1">NORMAL</button>
-        <button class="diff-btn" data-diff="2">HARD</button>
-        <button class="diff-btn" data-diff="3">INSANE</button>
+        <button class="diff-btn" data-diff="0">Easy🟩</button>
+        <button class="diff-btn active" data-diff="1">Normal🟨</button>
+        <button class="diff-btn" data-diff="2">Hard🟥</button>
+        <button class="diff-btn" data-diff="3">Insane🟪</button>
         
         <span style="color:#666;font-size:0.6rem;">|</span>
         
-        <label>MUSIC</label>
+        <label>Input Music</label>
         <input type="file" id="musicFileInput" accept="audio/*">
         <span id="fileSizeDisplay" class="file-size"></span>
     </div>
     
     <div class="status-bar">
-        <span id="scoreDisplay">SCORE: 0</span>
-        <span id="comboDisplay">COMBO: 0</span>
+        <span id="scoreDisplay">Score: 0</span>
+        <span id="comboDisplay">Combo: 0</span>
         <span id="musicStatus" class="music-status optional">NO MUSIC (OPTIONAL)</span>
-        <span id="gameStatus">READY</span>
+        <span id="gameStatus">Ready:)</span>
     </div>
 </div>
 
 <script>
-    // ============================================
-    // OSU! GAME + INDEXEDDB MUSIC
-    // ============================================
-    
+    // Easter egg
     const DEFAULT_QUESTIONS = [
         { "question": "How many rooms does Tin Shing Court have?", "options": ["1", "2", "3", "4"], "correct": 2 },
         { "question": "When was Tin Shing Court finished building?", "options": ["1986", "1987", "1999", "2000"], "correct": 2 },
@@ -471,7 +468,7 @@
     ctx = canvasElem.getContext('2d');
     
     // ============================================
-    // INDEXEDDB MUSIC STORAGE
+    // Music Storage
     // ============================================
     
     function openDB() {
@@ -674,7 +671,7 @@
     }
     
     // ============================================
-    // DIFFICULTY GENERATOR
+    // Note Gen 
     // ============================================
     function generateNotes() {
         const diff = difficulties[currentDifficulty];
@@ -751,7 +748,7 @@
     }
     
     // ============================================
-    // GAME PLAY
+    // Gameplay
     // ============================================
     function startGame() {
         stopMusic();
@@ -843,7 +840,7 @@
     }
     
     // ============================================
-    // DRAW FUNCTIONS
+    // Draw Functions
     // ============================================
     function draw() {
         if (!ctx) return;
@@ -985,7 +982,7 @@
     }
     
     // ============================================
-    // TAP HANDLER
+    // Tap Handle
     // ============================================
     function handleTap(clientX, clientY) {
         if (!gameActive || gameLocked || quizActive || !gameStarted || deathTriggered) return;
@@ -1116,7 +1113,7 @@
     }
     
     // ============================================
-    // DIFFICULTY BUTTONS
+    // DDifficluty Buttons
     // ============================================
     document.querySelectorAll('.diff-btn').forEach(btn => {
         btn.onclick = (e) => {
@@ -1133,7 +1130,7 @@
     });
     
     // ============================================
-    // EVENTS
+    // Events Handle
     // ============================================
     
     canvasElem.addEventListener('touchstart', (e) => {
@@ -1243,7 +1240,7 @@
     }
     
     // ============================================
-    // INIT
+    // Init
     // ============================================
     async function loadQuestions() {
         try {
