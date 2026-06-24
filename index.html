@@ -381,9 +381,9 @@
     </style>
 </head>
 <body>
-<div class="lives-display" id="livesDisplay">LIVES: 2</div>
-<div class="accuracy-warning" id="accuracyWarning">ACC: 100%</div>
-<div class="difficulty-indicator" id="difficultyIndicator">NORMAL</div>
+<div class="lives-display" id="livesDisplay">Lives: 2</div>
+<div class="accuracy-warning" id="accuracyWarning">Accurancy: 100%</div>
+<div class="difficulty-indicator" id="difficultyIndicator">Normal</div>
 
 <div class="game-container">
     <canvas id="gameCanvas" width="800" height="500"></canvas>
@@ -1196,19 +1196,19 @@
                 overlay.remove();
                 quizActive = false;
                 gameLocked = false;
-                document.getElementById('gameStatus').innerHTML = 'READY - PRESS PLAY';
+                document.getElementById('gameStatus').innerHTML = 'Ready to play :)';
                 return;
             }
             const q = questions[qIndex];
             overlay.innerHTML = `
                 <div class="quiz-container">
-                    <div class="progress-badge">QUESTION ${qIndex+1}/3</div>
-                    <div class="progress-badge" style="color:#88ff88">INFINITE ATTEMPTS</div>
+                    <div class="progress-badge">Question ${qIndex+1}/3</div>
+                    <div class="progress-badge" style="color:#88ff88">hi</div>
                     <div class="quiz-question">${q.question}</div>
                     <div class="quiz-options">
                         ${q.options.map((opt, idx) => `<div class="quiz-opt" data-opt="${idx}">${opt}</div>`).join('')}
                     </div>
-                    <button class="quiz-skip-btn" id="quizSkipBtn">SKIP QUESTIONS</button>
+                    <button class="quiz-skip-btn" id="quizSkipBtn">Skip da question?</button>
                 </div>
             `;
             
@@ -1220,7 +1220,7 @@
                     } else {
                         const msg = document.createElement('div');
                         msg.style.cssText = 'color:#ff8888;text-align:center;margin-top:15px';
-                        msg.innerText = "WRONG - TRY AGAIN";
+                        msg.innerText = "Wrongggggg";
                         overlay.querySelector('.quiz-container').appendChild(msg);
                         setTimeout(() => msg.remove(), 1200);
                     }
@@ -1231,7 +1231,7 @@
                 overlay.remove();
                 quizActive = false;
                 gameLocked = false;
-                document.getElementById('gameStatus').innerHTML = 'READY - PRESS PLAY';
+                document.getElementById('gameStatus').innerHTML = 'Da game is readyy';
             };
         }
         
