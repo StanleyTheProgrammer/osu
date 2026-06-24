@@ -2,18 +2,23 @@
   "questions": [
     {
       "question": "How many rooms does Tin Shing Court have?",
-      "options": ["1", "2", "3", "4"],
-      "correct": 2
+      "options": ["1-2", "1-3", "1-4", "1-5"],
+      "correct": 1
     },
     {
       "question": "When was Tin Shing Court finished building?",
-      "options": ["1986", "1987", "1999", "2000"],
+      "options": ["1986", "1987", "1999", "2001"],
       "correct": 2
     },
     {
-      "question": "How many times have the Tin Shing Mall rebuilded？",
+      "question": "How many times have the Tin Shing Mall rebuilt？",
       "options": ["1", "2", "3", "4"],
       "correct": 0
     },
+    {
+      "question": "Which school is near Tin Shing Court?",
+      "options": ["Queen Elizabeth School Old Student Association Branch Primary School", "Yuen Long Merchants Association Primary School"],
+      "correct": 0
+    }
   ]
 }
